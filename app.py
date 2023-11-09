@@ -11,5 +11,17 @@ def get_data():
     data = {"message": "Hello from Flask!"}
     return jsonify(data)
 
+@app.route('/api/logistic', methods=['GET', 'POST'])
+def logistic():
+    # Implement your logic to retrieve data here
+    data = {"message": "Hello from Flask!"}
+    return jsonify(data)
+
+@app.route('/api/hybrid', methods=['GET', 'POST'])
+def hybrid():
+    # Implement your logic to retrieve data here
+    data = {"message": "Hello from Flask!"}
+    return jsonify(data)
+
 if __name__ == '__main__':
     app.run()
