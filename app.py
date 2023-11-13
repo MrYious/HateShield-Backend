@@ -11,7 +11,7 @@ CORS(app)
 tfidf_model = joblib.load('tfidf_vectorizer.pkl')
 
 # Load the Logistic Regression Model
-log_reg_model = joblib.load('logistic_regression_model_v2.pkl')
+log_reg_model = joblib.load('logistic_regression_model.pkl')
 
 @app.route('/api/', methods=['GET'])
 def get_data():
