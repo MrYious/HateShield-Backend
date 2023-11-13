@@ -58,6 +58,27 @@ def logistic():
     # NORMALIZE: Lowercasing
     text = text.lower()
 
+    stopwords = [
+        "isang", "tungkol", "pagkatapos", "muli", "laban",
+        "lahat", "ako", "ay", "at", "alinman", "hindi", "gaya",
+        "maging", "dahil", "naging", "bago", "pagiging", "ibaba",
+        "pagitan", "pareho", "ngunit", "pamamagitan", "maaari",
+        "ginawa", "gawin", "ginagawa", "pababa", "habang",
+        "bawat", "ilang", "para", "mula", "pa", "mayroon", "wala",
+        "may", "siya", "siya'y", "kanya", "dito", "narito", "sarili",
+        "kanyang", "paano", "ako'y", "nito", "tayo'y", "mas",
+        "karamihan", "dapat", "aking", "mismo", "ni", "palayo",
+        "beses", "lamang", "o", "iba", "atin", "ating", "mga", "labas",
+        "kaya", "kaysa", "iyon", "ang",
+        "kanilang", "kanila", "sila", "ito", "sa", "rin",
+        "hanggang", "pataas", "napakas", "tayo", "ay", "kailan",
+        "saan", "alin", "sino", "kanino", "bakit", "kasama",
+        "gusto", "ikaw", "iyo", "inyong", "ang", "na", "sa",
+        "kay", "ni", "ng", "ngayon", "ito", "ka", "sila", "ka",
+        "ngayo'y", "kapag", "kung", "saka", "siya", "siyang",
+        "sya", "sya'y", "tayo", "tulad", "yun", "yung"
+    ]
+
     print(text)
 
     # FEATURE EXTRACTION: Create input features via TF-IDF
@@ -67,9 +88,6 @@ def logistic():
     prediction = log_reg_model.predict(input_features)
 
     class_probabilities = log_reg_model.predict_proba(input_features)
-
-    # class_probabilities is a 2D array where the first column is the probability of class 0
-    # and the second column is the probability of class 1
 
     probability_0 = class_probabilities[0][0]
     probability_1 = class_probabilities[0][1]
