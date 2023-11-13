@@ -29,14 +29,14 @@ def logistic():
 
     # REMOVE: Links
     pattern = r'http\S+|www\S+'
-    replacement = ''
+    replacement = ' '
     text = re.sub(pattern, replacement, text)
     # REMOVE: Emojis
     pattern = r'&#\w*?;'
-    replacement = ''
+    replacement = ' '
     text = re.sub(pattern, replacement, text)
     pattern = r'&\w*?;'
-    replacement = ''
+    replacement = ' '
     text = re.sub(pattern, replacement, text)
     # REMOVE: Symbols & Punctuations
     pattern = r'[^\w\s"\'@#]'
