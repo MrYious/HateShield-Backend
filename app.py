@@ -13,20 +13,7 @@ tfidf_model = joblib.load('tfidf_vectorizer.pkl')
 # Load the Logistic Regression Model
 log_reg_model = joblib.load('logistic_regression_model.pkl')
 
-@app.route('/api/', methods=['GET'])
-def get_data():
-    # Implement your logic to retrieve data here
-    data = {"message": "Hello from Flask!"}
-    return jsonify(data)
-
-# LOGISTIC REGRESSION CLASSIFIER
-@app.route('/api/logistic', methods=['GET', 'POST'])
-def logistic():
-    data = request.json
-    text = data.get('text')
-
-    print(text)
-
+def preprocessText(text):
     # REMOVE: Links
     pattern = r'http\S+|www\S+'
     replacement = ' '
@@ -58,6 +45,30 @@ def logistic():
     # NORMALIZE: Lowercasing
     text = text.lower()
 
+    return text
+
+def ruleBased2(text, hate_words):
+    # Convert text to lowercase for case-insensitive matching
+    text = text.lower()
+
+    # Check if any hate-containing words are present in the text
+    for hate_word in hate_words:
+        if hate_word in text:
+            return True
+
+    # No hate-containing words found in the text
+    return False
+
+# LOGISTIC REGRESSION CLASSIFIER
+@app.route('/api/logistic', methods=['GET', 'POST'])
+def logistic():
+    data = request.json
+    text = data.get('text')
+
+    print(text)
+
+    text = preprocessText(text)
+
     stopwords = [
         "isang", "tungkol", "pagkatapos", "muli", "laban",
         "lahat", "ako", "ay", "at", "alinman", "hindi", "gaya",
@@ -79,6 +90,10 @@ def logistic():
         "sya", "sya'y", "tayo", "tulad", "yun", "yung"
     ]
 
+    words = text.split()
+    filtered_words = [word for word in words if word.lower() not in stopwords]
+    text = ' '.join(filtered_words)
+
     print(text)
 
     # FEATURE EXTRACTION: Create input features via TF-IDF
@@ -98,6 +113,18 @@ def logistic():
 # HYBRID CLASSIFICATION
 @app.route('/api/hybrid', methods=['GET', 'POST'])
 def hybrid():
+    data = request.json
+    text = data.get('text')
+
+    hate_words_list = ["tanga", "nigga", "nigger", "bisakol", "salot"]
+
+    is_hate_speech = ruleBased2(text, hate_words_list)
+
+    response = {
+        'text': text,
+        'is_hate_speech': is_hate_speech
+    }
+
     # Implement your logic to retrieve data here
     data = {"message": "Hello from Flask!"}
     return jsonify(data)
