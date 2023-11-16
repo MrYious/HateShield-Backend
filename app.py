@@ -107,7 +107,11 @@ def logistic():
     probability_0 = class_probabilities[0][0]
     probability_1 = class_probabilities[0][1]
 
-    result = {'prediction': int(prediction[0]), 'probability_0': probability_0, 'probability_1': probability_1}
+    result = {
+        'prediction': int(prediction[0]),
+        'probability_0': probability_0,
+        'probability_1': probability_1
+    }
     return jsonify(result)
 
 # HYBRID CLASSIFICATION
@@ -116,18 +120,50 @@ def hybrid():
     data = request.json
     text = data.get('text')
 
-    hate_words_list = ["tanga", "nigga", "nigger", "bisakol", "salot"]
+    text = preprocessText(text)
 
-    is_hate_speech = ruleBased2(text, hate_words_list)
+    hate_words_list = ["tanga", "nigga", "nigger", "bisakol", "bayot"]
+    negation_words_list = [""]
 
-    response = {
-        'text': text,
-        'is_hate_speech': is_hate_speech
-    }
+    isRule1 = False
+    isRule2 = ruleBased2(text, hate_words_list)
 
-    # Implement your logic to retrieve data here
-    data = {"message": "Hello from Flask!"}
-    return jsonify(data)
+    if isRule1:
+
+        result = {
+            'model': 'rule',
+            'prediction': int(0 if isRule2 else 1),
+            'negation_detected_words': ['sample', 'sample', 'sample'],
+            'rule': 1
+        }
+    elif isRule2:
+
+        result = {
+            'model': 'rule',
+            'prediction': int(1 if isRule2 else 0),
+            'hate_detected_words': ['sample', 'sample', 'sample'],
+            'rule': 2
+        }
+    else:
+        # FEATURE EXTRACTION: Create input features via TF-IDF
+        input_features = tfidf_model.transform([text])
+
+        # CLASSIFICATION: Logistic Regression Model
+        prediction = log_reg_model.predict(input_features)
+
+        class_probabilities = log_reg_model.predict_proba(input_features)
+
+        probability_0 = class_probabilities[0][0]
+        probability_1 = class_probabilities[0][1]
+
+        result = {
+            'model': 'logistic',
+            'prediction': int(prediction[0]),
+            'probability_0': probability_0,
+            'probability_1': probability_1
+        }
+
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
