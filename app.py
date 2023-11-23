@@ -8,7 +8,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Stop Words List
-stopwords = [
+stop_words = [
     "isang", "tungkol", "pagkatapos", "muli", "laban",
     "lahat", "ako", "ay", "at", "alinman", "hindi", "gaya",
     "maging", "dahil", "naging", "bago", "pagiging", "ibaba",
@@ -29,7 +29,7 @@ stopwords = [
     "sya", "sya'y", "tayo", "tulad", "yun", "yung"
 ]
 
-# Hate Speech Word List
+# Hate Speech Words List
 hate_words_list = [
   'abnormal', 'abnoy', 'animal', 'arabo', 'aso',
   'aswang', 'baboy', 'backstabber', 'bading', 'badjao',
@@ -50,7 +50,7 @@ hate_words_list = [
   'ladyboy', 'lamang-lupa', 'laspag', 'lesbo', 'linta',
   'mabaho', 'magnanakaw', 'maitim', 'maligno', 'manananggal',
   'mangkukulam', 'mangmang', 'manyak', 'manyakis', 'matanda',
-  'may saltik', 'may sayad', 'mongoloid', 'multo', 'negra',
+  'saltik', 'sayad', 'mongoloid', 'multo', 'negra',
   'negro', 'nganget', 'ngongo', 'nigga', 'nigger',
   'nognog', 'pandak', 'pandak', 'panget', 'pango',
   'panot', 'peenoise', 'pignoys', 'plastik', 'pokpok',
@@ -62,9 +62,12 @@ hate_words_list = [
   'supot', 'taba', 'tababoy', 'tabaching-ching', 'tabachoy',
   'tanda', 'tanga', 'tarantado', 'terrorista', 'tibo',
   'tikbalang', 'tingting', 'tiyanak', 'tomboy', 'topak',
-  'tranny', 'trans', 'trapo', 'trash', 'traydor',
+  'tranny', 'trans', 'trapo', 'trash',
   'tuta', 'ugly', 'ulaga', 'unano', 'unggoy'
 ];
+
+# Negation Words List
+negation_words_list = [""]
 
 # Load the TF-IDF model
 tfidf_model = joblib.load('tfidf_vectorizer.pkl')
@@ -106,7 +109,35 @@ def preprocessText(text):
 
     return text
 
-def ruleBased2(text, hate_words):
+def ruleBased0(text, hate_words):
+    text_quotations = re.findall(r'["\']([^"\']*)["\']', text)
+    print(text_quotations)
+
+    matching_indices = []
+
+    for i, text_value in enumerate(text_quotations):
+        for hate_word in hate_words:
+            if hate_word in text_value:
+                matching_indices.append(i)
+
+    if matching_indices:
+        return {
+            'indices': matching_indices,
+            'result': True
+        }
+    else:
+        return {
+            'result': False
+        }
+
+def ruleBased1(text, hate_words):
+
+    return False
+
+def ruleBased2():
+    return False
+
+def ruleBased3(text, hate_words):
     # Convert text to lowercase for case-insensitive matching
     text = text.lower()
 
@@ -125,11 +156,10 @@ def logistic():
     text = data.get('text')
 
     print(text)
-
     text = preprocessText(text)
 
     words = text.split()
-    filtered_words = [word for word in words if word.lower() not in stopwords]
+    filtered_words = [word for word in words if word.lower() not in stop_words]
     text = ' '.join(filtered_words)
 
     print(text)
@@ -157,39 +187,68 @@ def logistic():
 def hybrid():
     data = request.json
     text = data.get('text')
+    # text = 'Sana mga "Bro" aT "pare " #hello'
+    # text = 'sana mga "bayot" at "pare " \'hello\' #example'
+    print(text)
 
     text = preprocessText(text)
+    print(text)
+
     textArray = text.split()
+    print(textArray)
 
-    negation_words_list = [""]
+    # Check for "[offensive/derogatory]"
+    # Check for [negation] + [offensive/derogatory]
+    # Check for [offensive] + [pronoun]
+    # Check for [derogatory]
+    isRule0 = ruleBased0(text, hate_words_list)
+    isRule1 = ruleBased1(text, hate_words_list)
+    isRule2 = ruleBased2()
+    isRule3 = ruleBased3(text, hate_words_list)
 
-    isRule1 = False
-    isRule2 = ruleBased2(text, hate_words_list)
-
-    if isRule1:
-        matching_words = [word for word in textArray if word in hate_words_list]
+    if isRule0['result']:
+        # ONGOING
+        # quotations = [word for word in textArray if word in hate_words_list]
 
         result = {
             'model': 'rule',
             'prediction': 0,
-            'negation_detected_words': matching_words,
+            'quotations': isRule0['indices'], #index
+            'rule': 0
+        }
+    elif isRule1:
+        # negation_words_pair = [word for word in textArray if word in hate_words_list]
+
+        result = {
+            'model': 'rule',
+            'prediction': 0,
+            'negation_words_pair': [],
             'rule': 1
         }
     elif isRule2:
-        matching_words = [word for word in textArray if word in hate_words_list]
+        # hate_words_pairs =
 
         result = {
             'model': 'rule',
             'prediction': 1,
-            'hate_detected_words': matching_words,
+            'hate_words_pairs': [ ['',''], ['',''] ],
             'rule': 2
         }
-    else:
-        text = preprocessText(text)
+    elif isRule3:
+        # DONE
+        hate_detected_words = [word for word in textArray if word in hate_words_list]
 
-        words = text.split()
-        filtered_words = [word for word in words if word.lower() not in stopwords]
-        text = ' '.join(filtered_words)
+        result = {
+            'model': 'rule',
+            'prediction': 1,
+            'hate_detected_words': hate_detected_words,
+            'rule': 3
+        }
+    else:
+        # LOGISTIC REGRESSION MODEL
+
+        filteredText = [word for word in textArray if word.lower() not in stop_words]
+        text = ' '.join(filteredText)
 
         # FEATURE EXTRACTION: Create input features via TF-IDF
         input_features = tfidf_model.transform([text])
@@ -209,7 +268,11 @@ def hybrid():
             'probability_1': probability_1
         }
 
+    print(result)
+    # return result
     return jsonify(result)
+
+# hybrid()
 
 if __name__ == '__main__':
     app.run(debug=True)
