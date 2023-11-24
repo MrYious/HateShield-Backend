@@ -188,8 +188,18 @@ def ruleBased0(text, hate_words):
         }
 
 def ruleBased1(textArray, hate_words, negation_words):
+    result = False
+    pairs = []
 
-    return False
+    for i in range(len(textArray) - 1):
+        first_word = textArray[i]
+        second_word = textArray[i + 1]
+
+        if first_word in negation_words and second_word in hate_words:
+            pairs.append([first_word, second_word])
+            result = True
+
+    return {'pairs': pairs, 'result': result}
 
 def ruleBased2(textArray, offensive_words, target_words):
     result = False
@@ -290,13 +300,13 @@ def hybrid():
             'quotations': isRule0['indices'], #index
             'rule': 0
         }
-    elif isRule1:
-        # negation_words_pair = [word for word in textArray if word in hate_words_list]
+    elif isRule1['result']:
+        # HALF COMPLETE
 
         result = {
             'model': 'rule',
             'prediction': 0,
-            'negation_words_pair': [],
+            'negation_words_pair': isRule1['pairs'],
             'rule': 1
         }
     elif isRule2['result']:
@@ -342,7 +352,6 @@ def hybrid():
         }
 
     print(result)
-    # return result
     return jsonify(result)
 
 # hybrid()
