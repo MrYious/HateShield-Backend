@@ -232,7 +232,6 @@ def logistic():
     data = request.json
     text = data.get('text')
 
-    print(text)
     text = preprocessText(text)
     text = preprocessText1(text)
 
@@ -240,14 +239,25 @@ def logistic():
     filtered_words = [word for word in words if word.lower() not in stop_words]
     text = ' '.join(filtered_words)
 
-    print(text)
-
-    # FEATURE EXTRACTION: Create input features via TF-IDF
+    # FEATURE EXTRACTION: Create input features via trained TF-IDF
     input_features = tfidf_model.transform([text])
 
     # CLASSIFICATION: Logistic Regression Model
     prediction = log_reg_model.predict(input_features)
 
+    # Get the feature names from the TF-IDF model
+    feature_names = tfidf_model.get_feature_names_out()
+
+    # Get the coefficients from the logistic regression model
+    coefficients = log_reg_model.coef_[0]
+
+    # Map feature names to their corresponding coefficients
+    feature_coefficients = dict(zip(feature_names, coefficients))
+
+    # Identify words in the input text and their absolute coefficients
+    contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
+
+    # Identify probability scores of the prediction for 0 and 1
     class_probabilities = log_reg_model.predict_proba(input_features)
 
     probability_0 = class_probabilities[0][0]
@@ -256,7 +266,8 @@ def logistic():
     result = {
         'prediction': int(prediction[0]),
         'probability_0': probability_0,
-        'probability_1': probability_1
+        'probability_1': probability_1,
+        'contributing_words': contributing_words
     }
     return jsonify(result)
 
@@ -265,8 +276,6 @@ def logistic():
 def hybrid():
     data = request.json
     text = data.get('text')
-    # text = 'Sana mga "Bro" aT "pare " #hello'
-    # text = 'sana mga "bayot" at "pare " \'hello\' #example'
     print(text)
 
     text = preprocessText(text)
@@ -275,7 +284,7 @@ def hybrid():
 
     textArray = text1.split()
     print(textArray)
-    
+
     # Merged Hate and Offensive Words
     hate_x_offensive = []
     for item in offensive_words_list + hate_words_list:
@@ -339,6 +348,19 @@ def hybrid():
         # CLASSIFICATION: Logistic Regression Model
         prediction = log_reg_model.predict(input_features)
 
+        # Get the feature names from the TF-IDF model
+        feature_names = tfidf_model.get_feature_names_out()
+
+        # Get the coefficients from the logistic regression model
+        coefficients = log_reg_model.coef_[0]
+
+        # Map feature names to their corresponding coefficients
+        feature_coefficients = dict(zip(feature_names, coefficients))
+
+        # Identify words in the input text and their absolute coefficients
+        contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
+
+        # Idenitfy probability scores of the prediction for 0 and 1
         class_probabilities = log_reg_model.predict_proba(input_features)
 
         probability_0 = class_probabilities[0][0]
@@ -348,13 +370,12 @@ def hybrid():
             'model': 'logistic',
             'prediction': int(prediction[0]),
             'probability_0': probability_0,
-            'probability_1': probability_1
+            'probability_1': probability_1,
+            'contributing_words': contributing_words
         }
 
     print(result)
     return jsonify(result)
-
-# hybrid()
 
 if __name__ == '__main__':
     app.run(debug=True)
