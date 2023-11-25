@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-# Offensive Word List
+# Offensive Word List 149
 offensive_words_list = [
     'abnormal', 'abusado', 'adik', 'animal', 'arabo',
     'arogante', 'aso', 'aswang', 'baboy', 'backstabber',
@@ -41,7 +41,7 @@ offensive_words_list = [
     'ulol', 'ulopong', 'unggoy'
 ]
 
-# Hate Speech Word List
+# Hate Speech Word List 70
 hate_words_list = [
     'abnoy', 'asshole', 'bayot', 'beho', 'bekimon',
     'biot', 'bisakol', 'bitch', 'bobita', 'buang',
@@ -59,14 +59,14 @@ hate_words_list = [
     'tiyanak', 'tranny', 'trans', 'ulaga', 'unano', 'whore'
 ]
 
-# Negation Word List
+# Negation Word List 5
 negation_words_list = [
     "not", 'hindi',
     "neither", "nor",
     "walang"
 ]
 
-# Stop Word List
+# Stop Word List 111
 stop_words = [
     "isang", "tungkol", "pagkatapos", "muli", "laban",
     "lahat", "ako", "ay", "at", "alinman", "hindi", "gaya",
@@ -88,7 +88,7 @@ stop_words = [
     "sya", "sya'y", "tayo", "tulad", "yun", "yung"
 ]
 
-# Target Word List
+# Target Word List 43
 target_words = [
     'you', 'all', 'them', 'her', 'him'
     'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong',
