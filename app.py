@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-# Offensive Word List 149
+# Offensive Word List 151
 offensive_words_list = [
     'abnormal', 'abusado', 'adik', 'animal', 'arabo',
     'arogante', 'aso', 'aswang', 'baboy', 'backstabber',
@@ -38,7 +38,7 @@ offensive_words_list = [
     'tangina', 'terrorista', 'tibo', 'tikbalang', 'tite',
     'titi', 'tomboy', 'topak', 'trapo', 'trash',
     'traydor', 'tubol', 'tukmol', 'tuta', 'ugly',
-    'ulol', 'ulopong', 'unggoy'
+    'ulol', 'ulopong', 'unggoy', 'mamatay', 'maghirap'
 ]
 
 # Hate Speech Word List 70
@@ -88,14 +88,14 @@ stop_words = [
     "sya", "sya'y", "tayo", "tulad", "yun", "yung"
 ]
 
-# Target Word List 43
+# Target Word List 44
 target_words = [
     'you', 'all', 'them', 'her', 'him'
     'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong',
     'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
     'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
     'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung', 'itong', 'etong'
-    '@USER', 'may'
+    '@USER', 'may', 'mga'
 ]
 
 # Load the TF-IDF model
@@ -184,13 +184,14 @@ def ruleBased1(textArray, hate_words, negation_words):
         first_word = textArray[i]
         second_word = textArray[i + 1]
 
-        if first_word in negation_words and second_word in hate_words:
-            pairs.append([first_word, second_word])
-            result = True
+        for hate_word in hate_words:
+            if first_word.lower() in negation_words and hate_word.lower() in second_word.lower():
+                pairs.append([first_word, second_word])
+                result = True
 
     return {'pairs': pairs, 'result': result}
 
-def ruleBased2(textArray, offensive_words, target_words):
+def ruleBased2(textArray, hate_words, target_words):
     result = False
     pairs = []
 
@@ -198,18 +199,18 @@ def ruleBased2(textArray, offensive_words, target_words):
         first_word = textArray[i]
         second_word = textArray[i + 1]
 
-        if first_word in offensive_words and second_word in target_words:
-            pairs.append([first_word, second_word])
-            result = True
+        for hate_word in hate_words:
+            if hate_word.lower() in first_word.lower() and second_word in target_words:
+                pairs.append([first_word, second_word])
+                result = True
 
     return {'pairs': pairs, 'result': result}
 
-def ruleBased3(text, hate_words):
-    for hate_word in hate_words:
-        if hate_word in text:
-            return True
+def ruleBased3(textArray, hate_words):
+    matched_words = [word for word in textArray for hate_word in hate_words if hate_word in word.lower()]
+    result = bool(matched_words)  # True if there are matched words, False otherwise
 
-    return False
+    return {'word': matched_words, 'result': result}
 
 
 # if logistic : use all stop words, like will be used in the another training of the model
@@ -282,12 +283,12 @@ def hybrid():
 
     # Check for "[offensive/derogatory]"
     # Check for [negation] + [offensive/hate]
-    # Check for [offensive] + [pronoun]
+    # Check for [offensive/hate] + [pronoun]
     # Check for [hate]
     isRule0 = ruleBased0(text, hate_x_offensive)
-    isRule1 = ruleBased1(textArray, hate_words_list, negation_words_list)
-    isRule2 = ruleBased2(textArray, offensive_words_list, target_words)
-    isRule3 = ruleBased3(text, hate_words_list)
+    isRule1 = ruleBased1(textArray, hate_x_offensive, negation_words_list)
+    isRule2 = ruleBased2(textArray, hate_x_offensive, target_words)
+    isRule3 = ruleBased3(textArray, hate_words_list)
 
     if isRule0['result']:
         # HALF COMPLETE
@@ -315,14 +316,13 @@ def hybrid():
             'hate_words_pairs': isRule2['pairs'],
             'rule': 2
         }
-    elif isRule3:
-        # DONE
-        hate_detected_words = [word for word in textArray if word in hate_words_list]
+    elif isRule3['result']:
+        # HALF COMPLETE
 
         result = {
             'model': 'rule',
             'prediction': 1,
-            'hate_detected_words': hate_detected_words,
+            'hate_detected_words': isRule3['word'],
             'rule': 3
         }
     else:
