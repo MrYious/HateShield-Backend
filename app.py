@@ -82,7 +82,11 @@ hate_words_list = [
 ]
 
 # Negation Word List
-negation_words_list = ["hindi", 'not']
+negation_words_list = [
+    "not", 'hindi',
+    "neither", "nor",
+    "walang"
+]
 
 # Stop Word List
 stop_words = [
@@ -108,10 +112,10 @@ stop_words = [
 
 # Target Word List
 target_words = [
-    'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong'
+    'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong',
     'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
     'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
-    'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung'
+    'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung',
     '@USER',
 ]
 
