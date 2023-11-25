@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 CORS(app)
 
-# Offensive Words List
+# Offensive Word List
 offensive_words_list = [
   'abnormal', 'abnoy', 'animal', 'arabo', 'aso',
   'aswang', 'baboy', 'backstabber', 'bading', 'badjao',
@@ -44,7 +44,7 @@ offensive_words_list = [
   'tuta', 'ugly', 'ulaga', 'unano', 'unggoy'
 ]
 
-# Hate Speech Words List
+# Hate Speech Word List
 hate_words_list = [
   'abnormal', 'abnoy', 'animal', 'arabo', 'aso',
   'aswang', 'baboy', 'backstabber', 'bading', 'badjao',
@@ -81,10 +81,10 @@ hate_words_list = [
   'tuta', 'ugly', 'ulaga', 'unano', 'unggoy'
 ]
 
-# Negation Words List
+# Negation Word List
 negation_words_list = ["hindi", 'not']
 
-# Stop Words List
+# Stop Word List
 stop_words = [
     "isang", "tungkol", "pagkatapos", "muli", "laban",
     "lahat", "ako", "ay", "at", "alinman", "hindi", "gaya",
@@ -106,8 +106,14 @@ stop_words = [
     "sya", "sya'y", "tayo", "tulad", "yun", "yung"
 ]
 
-# Target Words List
-target_words = ['siya', 'mo', 'niya']
+# Target Word List
+target_words = [
+    'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong'
+    'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
+    'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
+    'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung'
+    '@USER',
+]
 
 # Load the TF-IDF model
 tfidf_model = joblib.load('tfidf_vectorizer.pkl')
