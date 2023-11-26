@@ -88,14 +88,14 @@ stop_words = [
     "sya", "sya'y", "tayo", "tulad", "yun", "yung"
 ]
 
-# Target Word List 44
+# Target Word List 47
 target_words = [
-    'you', 'all', 'them', 'her', 'him'
-    'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong',
+    'you', 'all', 'them', 'her', 'him',
+    'ni', 'mo', 'ikaw',  'kayo', 'kamo', 'kang', 'kayong',
     'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
     'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
     'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung', 'itong', 'etong',
-    '@USER'
+    '@USER', 'ka', 'kau', 'si', 'ni'
 ]
 
 # Load the TF-IDF model
