@@ -181,27 +181,73 @@ def ruleBased0(text, hate_words):
 def ruleBased1(textArray, hate_words, negation_words):
     result = False
     pairs = []
-    newTextArray = []
+    newTextArray = textArray.copy()  # Create a copy of the original array
 
+    # First Loop for consecutive pairs
     i = 0
-    while i < len(textArray):
-        word = textArray[i]
+    while i < len(newTextArray) - 1:
+        current_word = newTextArray[i]
 
-        # Check for negation word
-        if word.lower() in negation_words:
-            i += 1  # Move to the next word
-            # Check for hate word in the remaining words
-            for j in range(i, min(i + 2, len(textArray))):
-                if textArray[j].lower() in hate_words:
-                    pairs.append([word, textArray[j]])
+        # Check if there are enough elements for the next word
+        if i + 1 < len(newTextArray):
+            next_word = newTextArray[i + 1]
+
+            for hate_word in hate_words:
+                for negation_word in negation_words:
+                    # Check for "hate + negation" pair
+                    # if hate_word.lower() in current_word.lower() and negation_word.lower() in next_word.lower():
+                    #     pairs.append([hate_word, negation_word])
+                    #     result = True
+                    #     # Remove the pair from newTextArray
+                    #     newTextArray.pop(i)
+                    #     newTextArray.pop(i)  # Pop again to remove the next word
+                    #     i -= 1  # Move the index back to re-check the current position
+                    #     break
+
+                    # Check for "negation + hate" pair
+                    if negation_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
+                        pairs.append([negation_word, hate_word])
+                        result = True
+                        # Remove the pair from newTextArray
+                        newTextArray.pop(i)
+                        newTextArray.pop(i)  # Pop again to remove the next word
+                        i -= 1  # Move the index back to re-check the current position
+                        break
+
+        i += 1
+
+    # Second loop for pairs with one word in between
+    i = 0
+    while i < len(newTextArray) - 2:
+        current_word = newTextArray[i]
+        next_word = newTextArray[i + 1]
+        third_word = newTextArray[i + 2]
+
+        for hate_word in hate_words:
+            for negation_word in negation_words:
+                # Check for "hate + any word + negation" pair
+                # if hate_word.lower() in current_word.lower() and negation_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
+                #     pairs.append([hate_word, negation_word])
+                #     result = True
+                #     # Remove the pair from newTextArray
+                #     newTextArray.pop(i)
+                #     newTextArray.pop(i)  # Pop again to remove the next word
+                #     newTextArray.pop(i)  # Pop again to remove the next word
+                #     i -= 1  # Move the index back to re-check the current position
+                #     break
+
+                # Check for "negation + any word + hate" pair
+                if negation_word.lower() in current_word.lower() and hate_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
+                    pairs.append([negation_word, hate_word])
                     result = True
-                    i = j + 1  # Move to the word after the hate word
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
                     break
-            else:
-                newTextArray.append(word)
-        else:
-            newTextArray.append(word)
-            i += 1  # Move to the next word
+
+        i += 1
 
     return {'pairs': pairs, 'result': result}, newTextArray
 
