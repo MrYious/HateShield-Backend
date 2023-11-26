@@ -279,9 +279,15 @@ def ruleBased2(textArray, hate_words, target_words):
     return {'pairs': pairs, 'result': result}, newTextArray
 
 def ruleBased3(textArray, hate_words):
-    matched_words = [word for word in textArray for hate_word in hate_words if hate_word in word.lower()]
-    result = bool(matched_words)  # True if there are matched words, False otherwise
+    matched_words = []
 
+    for word in textArray:
+        for hate_word in hate_words:
+            if hate_word in word.lower():
+                matched_words.append(word)
+                break  # Stop the loop once a match is found
+
+    result = bool(matched_words)  # True if there are matched words, False otherwise
     return {'word': matched_words, 'result': result}
 
 # LOGISTIC REGRESSION CLASSIFIER
