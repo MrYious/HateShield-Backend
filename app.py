@@ -95,7 +95,7 @@ target_words = [
     'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
     'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
     'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung', 'itong', 'etong',
-    '@USER', 'may', 'mga'
+    '@USER'
 ]
 
 # Load the TF-IDF model
