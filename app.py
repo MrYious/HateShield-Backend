@@ -166,15 +166,17 @@ def ruleBased0(text, hate_words):
             if hate_word in text_value:
                 matching_indices.append(i)
 
-    if matching_indices:
-        return {
-            'indices': matching_indices,
-            'result': True
-        }
-    else:
-        return {
-            'result': False
-        }
+    new_text = text
+
+    for index in sorted(matching_indices, reverse=True):
+        start = text.find(text_quotations[index])
+        end = start + len(text_quotations[index])
+        new_text = new_text[:start] + new_text[end:]
+
+    return {
+        'indices': matching_indices,
+        'result': bool(matching_indices)
+    }, new_text
 
 def ruleBased1(textArray, hate_words, negation_words):
     result = False
@@ -351,14 +353,19 @@ def hybrid():
     # Check for [negation] + [offensive/hate]
     # Check for [offensive/hate] + [pronoun]
     # Check for [hate]
-    isRule0 = ruleBased0(text, hate_x_offensive)
+    isRule0, newText = ruleBased0(text, hate_x_offensive)
     print(isRule0)
+    print(newText)
+    textArray = preprocessText1(newText).split()
+
     isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
     print(isRule1)
     print(textArray)
+
     isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
     print(isRule2)
     print(textArray)
+
     isRule3 = ruleBased3(textArray, hate_words_list)
     print(isRule3)
 
