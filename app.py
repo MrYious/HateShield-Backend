@@ -179,67 +179,91 @@ def ruleBased0(text, hate_words):
 def ruleBased1(textArray, hate_words, negation_words):
     result = False
     pairs = []
+    newTextArray = []
 
-    for i in range(len(textArray)):
-        first_word = textArray[i]
+    i = 0
+    while i < len(textArray):
+        word = textArray[i]
 
-        for j in range(i + 1, min(i + 3, len(textArray))):
-            second_word = textArray[j]
-
-            for hate_word in hate_words:
-                if first_word.lower() in negation_words and hate_word.lower() in second_word.lower():
-                    pairs.append([first_word, second_word])
+        # Check for negation word
+        if word.lower() in negation_words:
+            i += 1  # Move to the next word
+            # Check for hate word in the remaining words
+            for j in range(i, min(i + 2, len(textArray))):
+                if textArray[j].lower() in hate_words:
+                    pairs.append([word, textArray[j]])
                     result = True
+                    i = j + 1  # Move to the word after the hate word
+                    break
+            else:
+                newTextArray.append(word)
+        else:
+            newTextArray.append(word)
+            i += 1  # Move to the next word
 
-    return {'pairs': pairs, 'result': result}
+    return {'pairs': pairs, 'result': result}, newTextArray
 
-# FIX, dont allow duplicate use, allow both target + hate + target
-# FIX, highlighting of the user mention when used
-# i want it to return {'pairs': pairs, 'result': result}  and newTextArray
-# where in the  newTextArray, will be the same textArray but the hate + target pairs are removed
 def ruleBased2(textArray, hate_words, target_words):
     result = False
     pairs = []
     newTextArray = textArray.copy()  # Create a copy of the original array
 
+    # First Loop for consecutive pairs
     i = 0
     while i < len(newTextArray) - 1:
         current_word = newTextArray[i]
+
+        # Check if there are enough elements for the next word
+        if i + 1 < len(newTextArray):
+            next_word = newTextArray[i + 1]
+
+            for hate_word in hate_words:
+                for target_word in target_words:
+                    # Check for "hate + target" pair
+                    if hate_word.lower() in current_word.lower() and target_word.lower() in next_word.lower():
+                        pairs.append([hate_word, target_word])
+                        result = True
+                        # Remove the pair from newTextArray
+                        newTextArray.pop(i)
+                        newTextArray.pop(i)  # Pop again to remove the next word
+                        i -= 1  # Move the index back to re-check the current position
+                        break
+
+                    # Check for "target + hate" pair
+                    elif target_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
+                        pairs.append([target_word, hate_word])
+                        result = True
+                        # Remove the pair from newTextArray
+                        newTextArray.pop(i)
+                        newTextArray.pop(i)  # Pop again to remove the next word
+                        i -= 1  # Move the index back to re-check the current position
+                        break
+
+        i += 1
+
+    # Second loop for pairs with one word in between
+    i = 0
+    while i < len(newTextArray) - 2:
+        current_word = newTextArray[i]
         next_word = newTextArray[i + 1]
+        third_word = newTextArray[i + 2]
 
         for hate_word in hate_words:
             for target_word in target_words:
-                # Check for "hate + target" pair
-                if hate_word.lower() in current_word.lower() and target_word.lower() in next_word.lower():
-                    pairs.append([hate_word, target_word])
-                    result = True
-                    # Remove the pair from newTextArray
-                    newTextArray.pop(i)
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    i -= 1  # Move the index back to re-check the current position
-                    break
-                # Check for "target + hate" pair
-                elif target_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
-                    pairs.append([hate_word, target_word])
-                    result = True
-                    # Remove the pair from newTextArray
-                    newTextArray.pop(i)
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    i -= 1  # Move the index back to re-check the current position
-                    break
-                # Check for "target + any word + hate" pair
-                elif target_word.lower() in current_word.lower() and hate_word.lower() in newTextArray[i + 2].lower():
-                    pairs.append([target_word, hate_word])
-                    result = True
-                    # Remove the pair from newTextArray
-                    newTextArray.pop(i)
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    i -= 1  # Move the index back to re-check the current position
-                    break
                 # Check for "hate + any word + target" pair
-                elif hate_word.lower() in current_word.lower() and target_word.lower() in newTextArray[i + 2].lower():
+                if hate_word.lower() in current_word.lower() and target_word.lower() in third_word.lower() and not next_word.lower() in hate_words + target_words:
                     pairs.append([hate_word, target_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
+
+                # Check for "target + any word + hate" pair
+                elif target_word.lower() in current_word.lower() and hate_word.lower() in third_word.lower() and not next_word.lower() in hate_words + target_words:
+                    pairs.append([target_word, hate_word])
                     result = True
                     # Remove the pair from newTextArray
                     newTextArray.pop(i)
@@ -257,10 +281,6 @@ def ruleBased3(textArray, hate_words):
     result = bool(matched_words)  # True if there are matched words, False otherwise
 
     return {'word': matched_words, 'result': result}
-
-
-# if logistic : use all stop words, like will be used in the another training of the model
-# if rule : no use english stop words, only use limited tagalog stopwords
 
 # LOGISTIC REGRESSION CLASSIFIER
 @app.route('/api/logistic', methods=['GET', 'POST'])
@@ -332,16 +352,17 @@ def hybrid():
     # Check for [offensive/hate] + [pronoun]
     # Check for [hate]
     isRule0 = ruleBased0(text, hate_x_offensive)
-    isRule1 = ruleBased1(textArray, hate_x_offensive, negation_words_list)
-    isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
-    isRule3 = ruleBased3(textArray, hate_words_list)
-
     print(isRule0)
+    isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
     print(isRule1)
+    print(textArray)
+    isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
     print(isRule2)
+    print(textArray)
+    isRule3 = ruleBased3(textArray, hate_words_list)
     print(isRule3)
 
-    if isRule0['result']:
+    if isRule0['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
         # HALF COMPLETE
 
         result = {
@@ -350,7 +371,7 @@ def hybrid():
             'quotations': isRule0['indices'], #index
             'rule': 0
         }
-    elif isRule1['result']:
+    elif isRule1['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
         # HALF COMPLETE
 
         result = {
