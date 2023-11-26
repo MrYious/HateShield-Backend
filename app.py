@@ -94,7 +94,7 @@ target_words = [
     'ni', 'mo', 'ikaw', 'ka', 'kayo', 'kamo', 'kang', 'kayong',
     'siya', 'sya', 'sila', 'sina', 'siyang', 'syang', 'silang',
     'niya', 'nya', 'niyo', 'nyo', 'nila', 'nina', 'niyang', "nyang", 'niyong', 'nyong', 'nilang',
-    'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung', 'itong', 'etong'
+    'yon', 'iyon', 'iyan', 'yan', 'iyang', 'iyong', 'yang', 'yong', 'yun', 'yung', 'itong', 'etong',
     '@USER', 'may', 'mga'
 ]
 
@@ -180,31 +180,77 @@ def ruleBased1(textArray, hate_words, negation_words):
     result = False
     pairs = []
 
-    for i in range(len(textArray) - 1):
+    for i in range(len(textArray)):
         first_word = textArray[i]
-        second_word = textArray[i + 1]
 
-        for hate_word in hate_words:
-            if first_word.lower() in negation_words and hate_word.lower() in second_word.lower():
-                pairs.append([first_word, second_word])
-                result = True
+        for j in range(i + 1, min(i + 3, len(textArray))):
+            second_word = textArray[j]
+
+            for hate_word in hate_words:
+                if first_word.lower() in negation_words and hate_word.lower() in second_word.lower():
+                    pairs.append([first_word, second_word])
+                    result = True
 
     return {'pairs': pairs, 'result': result}
 
+# FIX, dont allow duplicate use, allow both target + hate + target
+# FIX, highlighting of the user mention when used
+# i want it to return {'pairs': pairs, 'result': result}  and newTextArray
+# where in the  newTextArray, will be the same textArray but the hate + target pairs are removed
 def ruleBased2(textArray, hate_words, target_words):
     result = False
     pairs = []
+    newTextArray = textArray.copy()  # Create a copy of the original array
 
-    for i in range(len(textArray) - 1):
-        first_word = textArray[i]
-        second_word = textArray[i + 1]
+    i = 0
+    while i < len(newTextArray) - 1:
+        current_word = newTextArray[i]
+        next_word = newTextArray[i + 1]
 
         for hate_word in hate_words:
-            if hate_word.lower() in first_word.lower() and second_word in target_words:
-                pairs.append([first_word, second_word])
-                result = True
+            for target_word in target_words:
+                # Check for "hate + target" pair
+                if hate_word.lower() in current_word.lower() and target_word.lower() in next_word.lower():
+                    pairs.append([hate_word, target_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
+                # Check for "target + hate" pair
+                elif target_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
+                    pairs.append([hate_word, target_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
+                # Check for "target + any word + hate" pair
+                elif target_word.lower() in current_word.lower() and hate_word.lower() in newTextArray[i + 2].lower():
+                    pairs.append([target_word, hate_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
+                # Check for "hate + any word + target" pair
+                elif hate_word.lower() in current_word.lower() and target_word.lower() in newTextArray[i + 2].lower():
+                    pairs.append([hate_word, target_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
 
-    return {'pairs': pairs, 'result': result}
+        i += 1
+
+    return {'pairs': pairs, 'result': result}, newTextArray
 
 def ruleBased3(textArray, hate_words):
     matched_words = [word for word in textArray for hate_word in hate_words if hate_word in word.lower()]
@@ -287,8 +333,13 @@ def hybrid():
     # Check for [hate]
     isRule0 = ruleBased0(text, hate_x_offensive)
     isRule1 = ruleBased1(textArray, hate_x_offensive, negation_words_list)
-    isRule2 = ruleBased2(textArray, hate_x_offensive, target_words)
+    isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
     isRule3 = ruleBased3(textArray, hate_words_list)
+
+    print(isRule0)
+    print(isRule1)
+    print(isRule2)
+    print(isRule3)
 
     if isRule0['result']:
         # HALF COMPLETE
@@ -326,6 +377,9 @@ def hybrid():
             'rule': 3
         }
     else:
+
+        textArray = text1.split()
+
         # LOGISTIC REGRESSION MODEL
 
         filteredText = [word for word in textArray if word.lower() not in stop_words]
