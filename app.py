@@ -6,7 +6,11 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 CORS(app)
-# sample comment
+
+# dataset
+# 0 : 20676
+# 1 : 22697
+
 # Offensive Word List 151
 offensive_words_list = [
     'abnormal', 'abusado', 'adik', 'animal', 'arabo',
@@ -267,8 +271,8 @@ def ruleBased2(textArray, hate_words, target_words):
 
             for hate_word in hate_words:
                 for target_word in target_words:
-                    # Check for "hate + target" pair
-                    if hate_word.lower() in current_word.lower() and target_word.lower() in next_word.lower():
+                    # Check for "hate + target" pair with substring matching for hate_word
+                    if hate_word.lower() in current_word.lower() and target_word.lower() == next_word.lower():
                         pairs.append([hate_word, target_word])
                         result = True
                         # Remove the pair from newTextArray
@@ -277,8 +281,8 @@ def ruleBased2(textArray, hate_words, target_words):
                         i -= 1  # Move the index back to re-check the current position
                         break
 
-                    # Check for "target + hate" pair
-                    elif target_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
+                    # Check for "target + hate" pair with exact matching for target_word
+                    elif target_word.lower() == current_word.lower() and hate_word.lower() in next_word.lower():
                         pairs.append([target_word, hate_word])
                         result = True
                         # Remove the pair from newTextArray
@@ -299,7 +303,7 @@ def ruleBased2(textArray, hate_words, target_words):
         for hate_word in hate_words:
             for target_word in target_words:
                 # Check for "hate + any word + target" pair
-                if hate_word.lower() in current_word.lower() and target_word.lower() in third_word.lower() and not next_word.lower() in hate_words + target_words:
+                if hate_word.lower() in current_word.lower() and target_word.lower() == third_word.lower() and next_word.lower() not in hate_words + target_words:
                     pairs.append([hate_word, target_word])
                     result = True
                     # Remove the pair from newTextArray
@@ -310,7 +314,7 @@ def ruleBased2(textArray, hate_words, target_words):
                     break
 
                 # Check for "target + any word + hate" pair
-                elif target_word.lower() in current_word.lower() and hate_word.lower() in third_word.lower() and not next_word.lower() in hate_words + target_words:
+                elif target_word.lower() == current_word.lower() and hate_word.lower() in third_word.lower() and next_word.lower() not in hate_words + target_words:
                     pairs.append([target_word, hate_word])
                     result = True
                     # Remove the pair from newTextArray
@@ -319,7 +323,6 @@ def ruleBased2(textArray, hate_words, target_words):
                     newTextArray.pop(i)  # Pop again to remove the next word
                     i -= 1  # Move the index back to re-check the current position
                     break
-
         i += 1
 
     return {'pairs': pairs, 'result': result}, newTextArray
@@ -401,10 +404,13 @@ def hybrid():
         if item not in hate_x_offensive:
             hate_x_offensive.append(item)
 
-    # Check for "[offensive/derogatory]"
-    # Check for [negation] + [offensive/hate]
-    # Check for [offensive/hate] + [pronoun]
-    # Check for [hate]
+    # Check for "[offensive/derogatory]" = 0
+    # Check for [negation] + [offensive/hate] = 0
+    # Check for [offensive/hate] + [pronoun] = 1
+    # Check for [hate] = 1
+
+    # FEATURE EXTRACTION
+    
     isRule0, newText = ruleBased0(text, hate_x_offensive)
     print(isRule0)
     print(newText)
@@ -457,7 +463,6 @@ def hybrid():
             'rule': 3
         }
     else:
-
         textArray = text1.split()
 
         # LOGISTIC REGRESSION MODEL
