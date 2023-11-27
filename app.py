@@ -6,7 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 
 CORS(app)
-
+# sample comment
 # Offensive Word List 151
 offensive_words_list = [
     'abnormal', 'abusado', 'adik', 'animal', 'arabo',
