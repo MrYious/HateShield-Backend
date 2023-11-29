@@ -411,11 +411,13 @@ def hybrid():
     # Check for [hate] = 1
 
     # FEATURE EXTRACTION
-    
+
     isRule0, newText = ruleBased0(text, hate_x_offensive)
     print(isRule0)
     print(newText)
     textArray = preprocessText1(newText).split()
+    textArray.append('[END]')
+    textArray.append('[END]')
 
     isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
     print(isRule1)
