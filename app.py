@@ -2,6 +2,7 @@ import re
 import joblib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from collections import OrderedDict
 
 app = Flask(__name__)
 
@@ -124,6 +125,9 @@ def preprocessText(text):
     # REMOVE: Symbols & Punctuations
     pattern = r'[^\w\s"\'@#]'
     replacement = ' '
+    text = re.sub(pattern, replacement, text)
+    pattern = r'(?<=[a-zA-Z])\'(?=[a-zA-Z])'
+    replacement = ''
     text = re.sub(pattern, replacement, text)
     # REMOVE: Hashtags
     pattern = r'#(\w+)'
@@ -413,30 +417,22 @@ def hybrid():
     # FEATURE EXTRACTION
 
     isRule0, newText = ruleBased0(text, hate_x_offensive)
-    print(isRule0)
-    print(newText)
     textArray = preprocessText1(newText).split()
     textArray.append('[END]')
     textArray.append('[END]')
-
     isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
-    print(isRule1)
-    print(textArray)
-
     isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
-    print(isRule2)
-    print(textArray)
-
     isRule3 = ruleBased3(textArray, hate_words_list)
-    print(isRule3)
 
     if isRule0['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
         # HALF COMPLETE
 
+        unique_indices = list(OrderedDict.fromkeys(isRule0['indices']))
+
         result = {
             'model': 'rule',
             'prediction': 0,
-            'quotations': isRule0['indices'], #index
+            'quotations': unique_indices, #index
             'rule': 0
         }
     elif isRule1['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
