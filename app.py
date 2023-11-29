@@ -45,7 +45,7 @@ offensive_words_list = [
     'ulol', 'ulopong', 'unggoy', 'mamatay', 'maghirap'
 ]
 
-# Hate Speech Word List 70
+# Hate Speech Word List 72
 hate_words_list = [
     'abnoy', 'asshole', 'bayot', 'beho', 'bekimon',
     'biot', 'bisakol', 'bitch', 'bobita', 'buang',
@@ -60,7 +60,8 @@ hate_words_list = [
     'retokada', 'sakang', 'sakim', 'salot', 'shunga',
     'sintosinto', 'slapsoil', 'slut', 'squammy', 'tababoy',
     'tabachingching', 'tabachoy', 'tarantado', 'tingting',
-    'tiyanak', 'tranny', 'trans', 'ulaga', 'unano', 'whore'
+    'tiyanak', 'tranny', 'trans', 'ulaga', 'unano', 'whore', 'motherfucker',
+    'tanginamo', 'putanginamo'
 ]
 
 # Negation Word List 5
