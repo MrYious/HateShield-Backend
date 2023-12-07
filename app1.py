@@ -379,19 +379,9 @@ def ruleBased3(textArray, hate_words):
     result = bool(matched_words)  # True if there are matched words, False otherwise
     return {'word': matched_words, 'result': result}
 
-# LOGISTIC REGRESSION CLASSIFIER
-@app.route('/api/logistic', methods=['GET', 'POST'])
-def logistic():
-    data = request.json
-    text = data.get('text')
 
-    text = preprocessText(text)
-    text = preprocessText1(text)
 
-    words = text.split()
-    filtered_words = [word for word in words if word.lower() not in stop_words]
-    text = ' '.join(filtered_words)
-
+def ex_logistic_regression_classifier(text):
     # FEATURE EXTRACTION: Create input features via trained TF-IDF
     input_features = tfidf_model.transform([text])
 
@@ -422,6 +412,63 @@ def logistic():
         'probability_1': probability_1,
         'contributing_words': contributing_words
     }
+    return result
+
+def hybrid_logistic_regression_classifier(text):
+    # FEATURE EXTRACTION: Create input features via trained TF-IDF
+    input_features = tfidf_model.transform([text])
+
+    # CLASSIFICATION: Logistic Regression Model
+    prediction = log_reg_model.predict(input_features)
+
+    # Get the feature names from the TF-IDF model
+    feature_names = tfidf_model.get_feature_names_out()
+
+    # Get the coefficients from the logistic regression model
+    coefficients = log_reg_model.coef_[0]
+
+    # Map feature names to their corresponding coefficients
+    feature_coefficients = dict(zip(feature_names, coefficients))
+
+    # Identify words in the input text and their absolute coefficients
+    contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
+
+    # Identify probability scores of the prediction for 0 and 1
+    class_probabilities = log_reg_model.predict_proba(input_features)
+
+    probability_0 = class_probabilities[0][0]
+    probability_1 = class_probabilities[0][1]
+
+    result = {
+        'prediction': int(prediction[0]),
+        'probability_0': probability_0,
+        'probability_1': probability_1,
+        'contributing_words': contributing_words
+    }
+    return result
+
+
+def hybrid_rule_based_classifier():
+    
+    return False
+
+# LOGISTIC REGRESSION CLASSIFIER
+@app.route('/api/logistic', methods=['GET', 'POST'])
+def logistic():
+    data = request.json
+    text = data.get('text')
+
+    # PREPROCESSING
+    text = preprocessText(text)
+    text = preprocessText1(text)
+
+    words = text.split()
+    filtered_words = [word for word in words if word.lower() not in stop_words]
+    text = ' '.join(filtered_words)
+
+    #CLASSIFICATION
+    result = ex_logistic_regression_classifier(text)
+
     return jsonify(result)
 
 # HYBRID CLASSIFICATION
@@ -497,44 +544,16 @@ def hybrid():
             'rule': 3
         }
     else:
-        textArray = text1.split()
 
-        # LOGISTIC REGRESSION MODEL
+        # PREPROCESSING
+        textArray = text1.split()
 
         filteredText = [word for word in textArray if word.lower() not in stop_words]
         text = ' '.join(filteredText)
 
-        # FEATURE EXTRACTION: Create input features via TF-IDF
-        input_features = tfidf_model.transform([text])
-
-        # CLASSIFICATION: Logistic Regression Model
-        prediction = log_reg_model.predict(input_features)
-
-        # Get the feature names from the TF-IDF model
-        feature_names = tfidf_model.get_feature_names_out()
-
-        # Get the coefficients from the logistic regression model
-        coefficients = log_reg_model.coef_[0]
-
-        # Map feature names to their corresponding coefficients
-        feature_coefficients = dict(zip(feature_names, coefficients))
-
-        # Identify words in the input text and their absolute coefficients
-        contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
-
-        # Idenitfy probability scores of the prediction for 0 and 1
-        class_probabilities = log_reg_model.predict_proba(input_features)
-
-        probability_0 = class_probabilities[0][0]
-        probability_1 = class_probabilities[0][1]
-
-        result = {
-            'model': 'logistic',
-            'prediction': int(prediction[0]),
-            'probability_0': probability_0,
-            'probability_1': probability_1,
-            'contributing_words': contributing_words
-        }
+        #CLASSIFICATION
+        result = ex_logistic_regression_classifier(text)
+        result['model'] = 'logistic'
 
     print(result)
     return jsonify(result)
