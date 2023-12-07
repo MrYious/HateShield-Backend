@@ -3,6 +3,7 @@ import joblib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from collections import OrderedDict
+import concurrent.futures
 
 app = Flask(__name__)
 
@@ -104,6 +105,12 @@ target_words = [
     '@USER', 'ka', 'kau', 'si', 'ni'
 ]
 
+# Merged Hate and Offensive Words
+hate_x_offensive = []
+for item in offensive_words_list + hate_words_list:
+    if item not in hate_x_offensive:
+        hate_x_offensive.append(item)
+
 # Load the TF-IDF model
 tfidf_model = joblib.load('tfidf_vectorizer.pkl')
 
@@ -164,45 +171,9 @@ def preprocessText1(text):
 
     return text
 
-def levenshtein_distance(s1, s2):
-    if len(s1) < len(s2):
-        return levenshtein_distance(s2, s1)
-
-    if len(s2) == 0:
-        return len(s1)
-
-    previous_row = range(len(s2) + 1)
-    for i, c1 in enumerate(s1):
-        current_row = [i + 1]
-        for j, c2 in enumerate(s2):
-            insertions = previous_row[j + 1] + 1
-            deletions = current_row[j] + 1
-            substitutions = previous_row[j] + (c1 != c2)
-            current_row.append(min(insertions, deletions, substitutions))
-        previous_row = current_row
-
-    return previous_row[-1]
-
-def wordCorrection(textArray, hatewords):
-    newTextArray = []
-
-    for word in textArray:
-        corrected_word = word
-        for hateword in hatewords:
-            # Use regex to check for case-insensitive similarity
-            if re.match(f'(?i){hateword}', word):
-                # Find the hateword with the minimum Levenshtein distance
-                corrected_word = min(hatewords, key=lambda x: levenshtein_distance(word.lower(), x.lower()))
-                break
-
-        newTextArray.append(corrected_word)
-
-    return newTextArray
-
+# Check for "[offensive/derogatory]" = 0
 def ruleBased0(text, hate_words):
     text_quotations = re.findall(r'["\']([^"\']*)["\']', text)
-    print(text_quotations)
-
     matching_indices = []
 
     for i, text_value in enumerate(text_quotations):
@@ -222,6 +193,7 @@ def ruleBased0(text, hate_words):
         'result': bool(matching_indices)
     }, new_text
 
+# Check for [negation] + [offensive/hate] = 0
 def ruleBased1(textArray, hate_words, negation_words):
     result = False
     pairs = []
@@ -295,6 +267,7 @@ def ruleBased1(textArray, hate_words, negation_words):
 
     return {'pairs': pairs, 'result': result}, newTextArray
 
+# Check for [offensive/hate] + [pronoun] = 1
 def ruleBased2(textArray, hate_words, target_words):
     result = False
     pairs = []
@@ -367,6 +340,7 @@ def ruleBased2(textArray, hate_words, target_words):
 
     return {'pairs': pairs, 'result': result}, newTextArray
 
+# Check for [hate] = 1
 def ruleBased3(textArray, hate_words):
     matched_words = []
 
@@ -379,14 +353,19 @@ def ruleBased3(textArray, hate_words):
     result = bool(matched_words)  # True if there are matched words, False otherwise
     return {'word': matched_words, 'result': result}
 
-
-
+# MODELS
 def ex_logistic_regression_classifier(text):
     # FEATURE EXTRACTION: Create input features via trained TF-IDF
     input_features = tfidf_model.transform([text])
 
     # CLASSIFICATION: Logistic Regression Model
     prediction = log_reg_model.predict(input_features)
+
+    # Identify probability scores of the prediction for 0 and 1
+    class_probabilities = log_reg_model.predict_proba(input_features)
+
+    probability_0 = class_probabilities[0][0]
+    probability_1 = class_probabilities[0][1]
 
     # Get the feature names from the TF-IDF model
     feature_names = tfidf_model.get_feature_names_out()
@@ -399,12 +378,6 @@ def ex_logistic_regression_classifier(text):
 
     # Identify words in the input text and their absolute coefficients
     contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
-
-    # Identify probability scores of the prediction for 0 and 1
-    class_probabilities = log_reg_model.predict_proba(input_features)
-
-    probability_0 = class_probabilities[0][0]
-    probability_1 = class_probabilities[0][1]
 
     result = {
         'prediction': int(prediction[0]),
@@ -415,11 +388,23 @@ def ex_logistic_regression_classifier(text):
     return result
 
 def hybrid_logistic_regression_classifier(text):
+    # PREPROCESSING
+    textArray = text.split()
+
+    filteredText = [word for word in textArray if word.lower() not in stop_words]
+    text = ' '.join(filteredText)
+
     # FEATURE EXTRACTION: Create input features via trained TF-IDF
     input_features = tfidf_model.transform([text])
 
     # CLASSIFICATION: Logistic Regression Model
     prediction = log_reg_model.predict(input_features)
+
+    # Identify probability scores of the prediction for 0 and 1
+    class_probabilities = log_reg_model.predict_proba(input_features)
+
+    probability_0 = class_probabilities[0][0]
+    probability_1 = class_probabilities[0][1]
 
     # Get the feature names from the TF-IDF model
     feature_names = tfidf_model.get_feature_names_out()
@@ -433,24 +418,95 @@ def hybrid_logistic_regression_classifier(text):
     # Identify words in the input text and their absolute coefficients
     contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
 
-    # Identify probability scores of the prediction for 0 and 1
-    class_probabilities = log_reg_model.predict_proba(input_features)
-
-    probability_0 = class_probabilities[0][0]
-    probability_1 = class_probabilities[0][1]
-
     result = {
         'prediction': int(prediction[0]),
         'probability_0': probability_0,
         'probability_1': probability_1,
         'contributing_words': contributing_words
     }
+
     return result
 
+def hybrid_rule_based_classifier(text):
 
-def hybrid_rule_based_classifier():
-    
-    return False
+    isRule0, newText = ruleBased0(text, hate_x_offensive)
+    textArray = preprocessText1(newText).split()
+    textArray.append('[END]')
+    textArray.append('[END]')
+
+    isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
+    isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
+    isRule3 = ruleBased3(textArray, hate_words_list)
+
+    if isRule0['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
+        unique_indices = list(OrderedDict.fromkeys(isRule0['indices']))
+
+        result = {
+            'model': 'rule',
+            'rule': 0,
+            'quotations': unique_indices,
+        }
+    elif isRule1['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
+
+        result = {
+            'prediction': 0,
+            'rule': 1,
+            'negation_words_pair': isRule1['pairs'],
+        }
+    elif isRule2['result']:
+        result = {
+            'prediction': 1,
+            'rule': 2,
+            'hate_words_pairs': isRule2['pairs'],
+        }
+    elif isRule3['result']:
+        result = {
+            'prediction': 1,
+            'rule': 3,
+            'hate_detected_words': isRule3['word'],
+        }
+    else:
+        result = {
+            'prediction': 0,
+            'rule': 4,
+        }
+
+    return result
+
+# VOTING SYSTEM
+def weighted_voting(rule_result, logistic_result):
+    result = {}
+
+    # SAME PREDICTION
+    if  rule_result['prediction'] == rule_result['prediction']:
+        rule_result.update(logistic_result)
+        result = rule_result
+        result['model'] = 'hybrid'
+        result['selected'] = 'both'
+
+        print('HYBRID RESULT = SAME')
+        print(result)
+
+    # DIFFERENT PREDICTION
+    else :
+        # ALGORITHM TO SELECT WHICH PREDICTION TO CHOOSE
+        #  1 0
+        #  0 1
+        if False:
+            result['selected'] = 'rule'
+            result.update(logistic_result)
+            result.update(rule_result)
+            result['prediction'] = rule_result['prediction']
+        else:
+            result['selected'] = 'logreg'
+            result.update(rule_result)
+            result.update(logistic_result)
+            result['prediction'] = logistic_result['prediction']
+
+        print('HYBRID RESULT = DIFFERENT')
+        print(result)
+
+    return result
 
 # LOGISTIC REGRESSION CLASSIFIER
 @app.route('/api/logistic', methods=['GET', 'POST'])
@@ -478,85 +534,41 @@ def hybrid():
     text = data.get('text')
     print(text)
 
+    # PREPROCESSING
     text = preprocessText(text)
     text1 = preprocessText1(text)
-    print(text)
 
-    textArray = text1.split()
-    print(textArray)
+    # PARALLEL PROCESSING
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Execute model functions in parallel
+        rule_model = executor.submit(hybrid_rule_based_classifier, text)
+        logistic_model = executor.submit(hybrid_logistic_regression_classifier, text1)
 
-    # Merged Hate and Offensive Words
-    hate_x_offensive = []
-    for item in offensive_words_list + hate_words_list:
-        if item not in hate_x_offensive:
-            hate_x_offensive.append(item)
+        # Wait for both tasks to complete
+        concurrent.futures.wait([rule_model, logistic_model])
 
-    # Check for "[offensive/derogatory]" = 0
-    # Check for [negation] + [offensive/hate] = 0
-    # Check for [offensive/hate] + [pronoun] = 1
-    # Check for [hate] = 1
+        # Get results from completed tasks
+        result_model1 = rule_model.result()
+        result_model2 = logistic_model.result()
 
-    # FEATURE EXTRACTION
+        print('Rule-Based Model')
+        print(result_model1)
+        print('Logistic Regression Model')
+        print(result_model2)
 
-    isRule0, newText = ruleBased0(text, hate_x_offensive)
-    textArray = preprocessText1(newText).split()
-    textArray.append('[END]')
-    textArray.append('[END]')
-    isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
-    isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
-    isRule3 = ruleBased3(textArray, hate_words_list)
+    result = weighted_voting(result_model1, result_model2)
+    # print(result)
 
-    if isRule0['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
-        # HALF COMPLETE
+    # model
+    # pred
+    # rule
+    # data | !lastrule
+    # prob0
+    # prob1
+    # contributinwords | hate
 
-        unique_indices = list(OrderedDict.fromkeys(isRule0['indices']))
-
-        result = {
-            'model': 'rule',
-            'prediction': 0,
-            'quotations': unique_indices, #index
-            'rule': 0
-        }
-    elif isRule1['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
-        # HALF COMPLETE
-
-        result = {
-            'model': 'rule',
-            'prediction': 0,
-            'negation_words_pair': isRule1['pairs'],
-            'rule': 1
-        }
-    elif isRule2['result']:
-        # HALF COMPLETE
-        result = {
-            'model': 'rule',
-            'prediction': 1,
-            'hate_words_pairs': isRule2['pairs'],
-            'rule': 2
-        }
-    elif isRule3['result']:
-        # HALF COMPLETE
-
-        result = {
-            'model': 'rule',
-            'prediction': 1,
-            'hate_detected_words': isRule3['word'],
-            'rule': 3
-        }
-    else:
-
-        # PREPROCESSING
-        textArray = text1.split()
-
-        filteredText = [word for word in textArray if word.lower() not in stop_words]
-        text = ' '.join(filteredText)
-
-        #CLASSIFICATION
-        result = ex_logistic_regression_classifier(text)
-        result['model'] = 'logistic'
-
-    print(result)
-    return jsonify(result)
+    return jsonify(result_model2)
+    # return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
