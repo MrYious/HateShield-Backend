@@ -171,101 +171,18 @@ def preprocessText1(text):
 
     return text
 
-# Check for "[offensive/derogatory]" = 0
-def ruleBased0(text, hate_words):
-    text_quotations = re.findall(r'["\']([^"\']*)["\']', text)
-    matching_indices = []
+# Check for [hate] = 1
+def ruleBased1(textArray, hate_words):
+    matched_words = []
 
-    for i, text_value in enumerate(text_quotations):
+    for word in textArray:
         for hate_word in hate_words:
-            if hate_word in text_value:
-                matching_indices.append(i)
+            if hate_word in word.lower():
+                matched_words.append(word)
+                break  # Stop the loop once a match is found
 
-    new_text = text
-
-    for index in sorted(matching_indices, reverse=True):
-        start = text.find(text_quotations[index])
-        end = start + len(text_quotations[index])
-        new_text = new_text[:start] + new_text[end:]
-
-    return {
-        'indices': matching_indices,
-        'result': bool(matching_indices)
-    }, new_text
-
-# Check for [negation] + [offensive/hate] = 0
-def ruleBased1(textArray, hate_words, negation_words):
-    result = False
-    pairs = []
-    newTextArray = textArray.copy()  # Create a copy of the original array
-
-    # First Loop for consecutive pairs
-    i = 0
-    while i < len(newTextArray) - 1:
-        current_word = newTextArray[i]
-
-        # Check if there are enough elements for the next word
-        if i + 1 < len(newTextArray):
-            next_word = newTextArray[i + 1]
-
-            for hate_word in hate_words:
-                for negation_word in negation_words:
-                    # Check for "hate + negation" pair
-                    # if hate_word.lower() in current_word.lower() and negation_word.lower() in next_word.lower():
-                    #     pairs.append([hate_word, negation_word])
-                    #     result = True
-                    #     # Remove the pair from newTextArray
-                    #     newTextArray.pop(i)
-                    #     newTextArray.pop(i)  # Pop again to remove the next word
-                    #     i -= 1  # Move the index back to re-check the current position
-                    #     break
-
-                    # Check for "negation + hate" pair
-                    if negation_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
-                        pairs.append([negation_word, hate_word])
-                        result = True
-                        # Remove the pair from newTextArray
-                        newTextArray.pop(i)
-                        newTextArray.pop(i)  # Pop again to remove the next word
-                        i -= 1  # Move the index back to re-check the current position
-                        break
-
-        i += 1
-
-    # Second loop for pairs with one word in between
-    i = 0
-    while i < len(newTextArray) - 2:
-        current_word = newTextArray[i]
-        next_word = newTextArray[i + 1]
-        third_word = newTextArray[i + 2]
-
-        for hate_word in hate_words:
-            for negation_word in negation_words:
-                # Check for "hate + any word + negation" pair
-                # if hate_word.lower() in current_word.lower() and negation_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
-                #     pairs.append([hate_word, negation_word])
-                #     result = True
-                #     # Remove the pair from newTextArray
-                #     newTextArray.pop(i)
-                #     newTextArray.pop(i)  # Pop again to remove the next word
-                #     newTextArray.pop(i)  # Pop again to remove the next word
-                #     i -= 1  # Move the index back to re-check the current position
-                #     break
-
-                # Check for "negation + any word + hate" pair
-                if negation_word.lower() in current_word.lower() and hate_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
-                    pairs.append([negation_word, hate_word])
-                    result = True
-                    # Remove the pair from newTextArray
-                    newTextArray.pop(i)
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    newTextArray.pop(i)  # Pop again to remove the next word
-                    i -= 1  # Move the index back to re-check the current position
-                    break
-
-        i += 1
-
-    return {'pairs': pairs, 'result': result}, newTextArray
+    result = bool(matched_words)  # True if there are matched words, False otherwise
+    return {'word': matched_words, 'result': result}
 
 # Check for [offensive/hate] + [pronoun] = 1
 def ruleBased2(textArray, hate_words, target_words):
@@ -340,18 +257,101 @@ def ruleBased2(textArray, hate_words, target_words):
 
     return {'pairs': pairs, 'result': result}, newTextArray
 
-# Check for [hate] = 1
-def ruleBased3(textArray, hate_words):
-    matched_words = []
+# Check for [negation] + [offensive/hate] = 0
+def ruleBased3(textArray, hate_words, negation_words):
+    result = False
+    pairs = []
+    newTextArray = textArray.copy()  # Create a copy of the original array
 
-    for word in textArray:
+    # First Loop for consecutive pairs
+    i = 0
+    while i < len(newTextArray) - 1:
+        current_word = newTextArray[i]
+
+        # Check if there are enough elements for the next word
+        if i + 1 < len(newTextArray):
+            next_word = newTextArray[i + 1]
+
+            for hate_word in hate_words:
+                for negation_word in negation_words:
+                    # Check for "hate + negation" pair
+                    # if hate_word.lower() in current_word.lower() and negation_word.lower() in next_word.lower():
+                    #     pairs.append([hate_word, negation_word])
+                    #     result = True
+                    #     # Remove the pair from newTextArray
+                    #     newTextArray.pop(i)
+                    #     newTextArray.pop(i)  # Pop again to remove the next word
+                    #     i -= 1  # Move the index back to re-check the current position
+                    #     break
+
+                    # Check for "negation + hate" pair
+                    if negation_word.lower() in current_word.lower() and hate_word.lower() in next_word.lower():
+                        pairs.append([negation_word, hate_word])
+                        result = True
+                        # Remove the pair from newTextArray
+                        newTextArray.pop(i)
+                        newTextArray.pop(i)  # Pop again to remove the next word
+                        i -= 1  # Move the index back to re-check the current position
+                        break
+
+        i += 1
+
+    # Second loop for pairs with one word in between
+    i = 0
+    while i < len(newTextArray) - 2:
+        current_word = newTextArray[i]
+        next_word = newTextArray[i + 1]
+        third_word = newTextArray[i + 2]
+
         for hate_word in hate_words:
-            if hate_word in word.lower():
-                matched_words.append(word)
-                break  # Stop the loop once a match is found
+            for negation_word in negation_words:
+                # Check for "hate + any word + negation" pair
+                # if hate_word.lower() in current_word.lower() and negation_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
+                #     pairs.append([hate_word, negation_word])
+                #     result = True
+                #     # Remove the pair from newTextArray
+                #     newTextArray.pop(i)
+                #     newTextArray.pop(i)  # Pop again to remove the next word
+                #     newTextArray.pop(i)  # Pop again to remove the next word
+                #     i -= 1  # Move the index back to re-check the current position
+                #     break
 
-    result = bool(matched_words)  # True if there are matched words, False otherwise
-    return {'word': matched_words, 'result': result}
+                # Check for "negation + any word + hate" pair
+                if negation_word.lower() in current_word.lower() and hate_word.lower() in third_word.lower() and not next_word.lower() in hate_words + negation_words:
+                    pairs.append([negation_word, hate_word])
+                    result = True
+                    # Remove the pair from newTextArray
+                    newTextArray.pop(i)
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    newTextArray.pop(i)  # Pop again to remove the next word
+                    i -= 1  # Move the index back to re-check the current position
+                    break
+
+        i += 1
+
+    return {'pairs': pairs, 'result': result}, newTextArray
+
+# Check for "[offensive/derogatory]" = 0
+def ruleBased4(text, hate_words):
+    text_quotations = re.findall(r'["\']([^"\']*)["\']', text)
+    matching_indices = []
+
+    for i, text_value in enumerate(text_quotations):
+        for hate_word in hate_words:
+            if hate_word in text_value:
+                matching_indices.append(i)
+
+    new_text = text
+
+    for index in sorted(matching_indices, reverse=True):
+        start = text.find(text_quotations[index])
+        end = start + len(text_quotations[index])
+        new_text = new_text[:start] + new_text[end:]
+
+    return {
+        'indices': matching_indices,
+        'result': bool(matching_indices)
+    }, new_text
 
 # MODELS
 def ex_logistic_regression_classifier(text):
@@ -406,7 +406,7 @@ def hybrid_logistic_regression_classifier(text):
     probability_0 = class_probabilities[0][0]
     probability_1 = class_probabilities[0][1]
 
-    # Get the feature names from the TF-IDF model
+    # Get feature names from the TF-IDF vectorizer
     feature_names = tfidf_model.get_feature_names_out()
 
     # Get the coefficients from the logistic regression model
@@ -415,43 +415,53 @@ def hybrid_logistic_regression_classifier(text):
     # Map feature names to their corresponding coefficients
     feature_coefficients = dict(zip(feature_names, coefficients))
 
-    # Identify words in the input text and their absolute coefficients
-    contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
+    # Identify words in the input text and their absolute coefficients for hate speech
+    contributing_words_hate_speech = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
+
+    # Filter out words that don't contribute to hate speech
+    contributing_words_hate_speech = {word: coefficient for word, coefficient in contributing_words_hate_speech.items() if coefficient > 0}
+
+    # Filter out words with absolute coefficients less than or equal to 3.0
+    contributing_hate_words = {word: coefficient for word, coefficient in contributing_words_hate_speech.items() if abs(coefficient) > 3.0}
+
+    # Sort the words by their absolute coefficients in descending order
+    sorted_contributing_words = dict(sorted(contributing_words_hate_speech.items(), key=lambda item: item[1], reverse=True))
 
     result = {
         'prediction': int(prediction[0]),
         'probability_0': probability_0,
         'probability_1': probability_1,
-        'contributing_words': contributing_words
+        'contributing_words': sorted_contributing_words,
+        'contributing_hate_words': contributing_hate_words
     }
 
     return result
 
 def hybrid_rule_based_classifier(text):
 
-    isRule0, newText = ruleBased0(text, hate_x_offensive)
+    isRule4, newText = ruleBased4(text, hate_x_offensive)
     textArray = preprocessText1(newText).split()
     textArray.append('[END]')
     textArray.append('[END]')
 
-    isRule1, textArray = ruleBased1(textArray, hate_x_offensive, negation_words_list)
+    isRule3, textArray = ruleBased3(textArray, hate_x_offensive, negation_words_list)
     isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
-    isRule3 = ruleBased3(textArray, hate_words_list)
+    isRule1 = ruleBased1(textArray, hate_words_list)
 
-    if isRule0['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
-        unique_indices = list(OrderedDict.fromkeys(isRule0['indices']))
-
-        result = {
-            'model': 'rule',
-            'rule': 0,
-            'quotations': unique_indices,
-        }
-    elif isRule1['result'] and (not isRule2['result'] ) and (not isRule3['result'] ):
+    if isRule4['result'] and (not isRule2['result'] ) and (not isRule1['result'] ):
+        unique_indices = list(OrderedDict.fromkeys(isRule4['indices']))
 
         result = {
             'prediction': 0,
-            'rule': 1,
-            'negation_words_pair': isRule1['pairs'],
+            'rule': 4,
+            'quotations': unique_indices,
+        }
+    elif isRule3['result'] and (not isRule2['result'] ) and (not isRule1['result'] ):
+
+        result = {
+            'prediction': 0,
+            'rule': 3,
+            'negation_words_pair': isRule3['pairs'],
         }
     elif isRule2['result']:
         result = {
@@ -459,52 +469,105 @@ def hybrid_rule_based_classifier(text):
             'rule': 2,
             'hate_words_pairs': isRule2['pairs'],
         }
-    elif isRule3['result']:
+    elif isRule1['result']:
         result = {
             'prediction': 1,
-            'rule': 3,
-            'hate_detected_words': isRule3['word'],
+            'rule': 1,
+            'hate_detected_words': isRule1['word'],
         }
     else:
         result = {
             'prediction': 0,
-            'rule': 4,
+            'rule': 5,
         }
+
+    rule_dicts = [isRule1, isRule2, isRule3, isRule4]
+
+    # Create a list containing the rule numbers where 'prediction' is 1
+    result['rules'] = [i + 1 for i, rule_dict in enumerate(rule_dicts) if rule_dict.get('result') == True]
 
     return result
 
 # VOTING SYSTEM
-def weighted_voting(rule_result, logistic_result):
+def majority_voting(rule_result, logistic_result):
     result = {}
 
     # SAME PREDICTION
-    if  rule_result['prediction'] == rule_result['prediction']:
+    if  rule_result['prediction'] == logistic_result['prediction']:
         rule_result.update(logistic_result)
         result = rule_result
-        result['model'] = 'hybrid'
         result['selected'] = 'both'
 
         print('HYBRID RESULT = SAME')
         print(result)
+        print("\n")
 
     # DIFFERENT PREDICTION
     else :
         # ALGORITHM TO SELECT WHICH PREDICTION TO CHOOSE
         #  1 0
         #  0 1
-        if False:
-            result['selected'] = 'rule'
+
+        if (rule_result['prediction'] == 1 and logistic_result['prediction'] == 0):
+            if (1 in rule_result['rules'] and 2 in rule_result['rules']):
+                result['selected'] = 'rule'
+            elif (3 in rule_result['rules'] and 4 in rule_result['rules']):
+                result['selected'] = 'logreg'
+            elif (1 in rule_result['rules'] or 2 in rule_result['rules']):
+                if logistic_result['probability_0'] > 0.80:
+                    result['selected'] = 'logreg'
+                elif logistic_result['probability_0'] > 0.65 and (3 in rule_result['rules'] or 4 in rule_result['rules']):
+                    result['selected'] = 'logreg'
+                else:
+                    result['selected'] = 'rule'
+            # 1 0
+            # rule 1-2 3-4 | logReg prob1<50% prob0>50%
+                # if rule1 & rule2
+                    # Select Rule 1
+                # if rule3 & rule 4
+                    # Select Logistic 0
+                # else if rule1 | rule2
+                    # if prob0 > 80%
+                        # Select Logistic 0
+                    # else if rule3 | rule 4 & prob0 > 65%
+                        # Select Logistic 0
+                    # else
+                        # Select Rule 1
+        elif (rule_result['prediction'] == 0 and logistic_result['prediction'] == 1):
+            if (3 in rule_result['rules'] and 4 in rule_result['rules']):
+                result['selected'] = 'rule'
+            elif not all(word in hate_x_offensive for word in logistic_result['contributing_hate_words']):
+                print('here1')
+                result['selected'] = 'logreg'
+            elif rule_result['rule'] == 5 and logistic_result['probability_1'] > 0.65:
+                print('here2')
+                result['selected'] = 'logreg'
+            else:
+                result['selected'] = 'rule'
+            # 0 1
+            # rule 3-4 5 | logReg prob1>50% prob0<50% words
+                # if rule3 & rule 4
+                    # Select Rule 0
+                # else if word not in hate/offensive
+                    # Select Logistic 1 >
+                # else if rule5 & prob1 > 65%
+                    # Select Logistic 1 >
+                # else
+                    # Select Rule 0
+
+
+        if result['selected'] == 'rule':
             result.update(logistic_result)
             result.update(rule_result)
             result['prediction'] = rule_result['prediction']
-        else:
-            result['selected'] = 'logreg'
+        elif result['selected'] == 'logreg':
             result.update(rule_result)
             result.update(logistic_result)
             result['prediction'] = logistic_result['prediction']
 
         print('HYBRID RESULT = DIFFERENT')
         print(result)
+        print("\n")
 
     return result
 
@@ -532,7 +595,11 @@ def logistic():
 def hybrid():
     data = request.json
     text = data.get('text')
+
+    print("\n")
+    print("TEXT")
     print(text)
+    print("\n")
 
     # PREPROCESSING
     text = preprocessText(text)
@@ -553,22 +620,25 @@ def hybrid():
 
         print('Rule-Based Model')
         print(result_model1)
+        print("\n")
         print('Logistic Regression Model')
         print(result_model2)
+        print("\n")
 
-    result = weighted_voting(result_model1, result_model2)
+    result = majority_voting(result_model1, result_model2)
     # print(result)
 
-    # model
-    # pred
+    # selected [both,rule,logreg]
+    # prediction
+
     # rule
-    # data | !lastrule
+    # ruleData / pairs / words
+
     # prob0
     # prob1
-    # contributinwords | hate
+    # contributingwords | hate
 
-    return jsonify(result_model2)
-    # return jsonify(result)
+    return jsonify(result)
 
 if __name__ == '__main__':
     app.run(debug=True)
