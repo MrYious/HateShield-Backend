@@ -5,8 +5,7 @@ import concurrent.futures
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from collections import OrderedDict
-from sklearn.feature_extraction.text import TfidfVectorizer
-# from tasks import train_daily
+# from tasks import training_task
 
 app = Flask(__name__)
 
@@ -35,7 +34,7 @@ json_data = {}
 try:
     with open(json_data_path, 'r') as file:
         json_data = json.load(file)
-        print(json_data)
+        print(len(json_data['predictions']))
 except FileNotFoundError:
     print('Load File Error')
 
@@ -97,10 +96,30 @@ for item in offensive_words_list + hate_words_list:
         hate_x_offensive.append(item)
 
 # Load the TF-IDF model
-tfidf_model = joblib.load('tfidf_vectorizer.pkl')
+tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
 
 # Load the Logistic Regression Model
-log_reg_model = joblib.load('logistic_regression_model.pkl')
+log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
+
+def reload_models():
+    global tfidf_model
+    global log_reg_model
+    global offensive_words_list
+    global hate_words_list
+
+    # Load TF-IDF Vectorizer
+    tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
+
+    # Load Logistic Regression model
+    log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
+
+    # Load Updated JSON DATA
+    with open(json_data_path, 'r') as file:
+        json_data = json.load(file)
+        print(len(json_data['predictions']))
+
+    offensive_words_list = json_data['offensive_words_list']
+    hate_words_list = json_data['hate_words_list']
 
 # SAVE JSON DATA
 def save_new_prediction(text,prediction):
@@ -636,6 +655,8 @@ def hybrid():
     save_new_prediction( data.get('text'), result['prediction'] )
 
     return jsonify(result)
+
+# training_task()
 
 if __name__ == '__main__':
     app.run(debug=True)
