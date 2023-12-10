@@ -1,9 +1,11 @@
 import re
 import joblib
+import json
+import concurrent.futures
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from collections import OrderedDict
-import concurrent.futures
+# from tasks import train_daily
 
 app = Flask(__name__)
 
@@ -13,58 +15,40 @@ CORS(app)
 # 0 : 20676
 # 1 : 22697
 
+json_data_path = 'data.json'
+json_data = {}
+# json_data = {
+#     'hate_words_list': [],
+#     'offensive_words_list': [],
+#     'predictions': [
+#         ['text', 1],
+#     ]
+# }
+
+#  INITIAL LOAD DATA FILE  ->
+
+#  LOAD DATA FILE -> UPDATE DATA -> UPDATE AND SAVE DATA FILE
+
+
+# Load the updated values
+try:
+    with open(json_data_path, 'r') as file:
+        json_data = json.load(file)
+        print(json_data)
+except FileNotFoundError:
+    print('Load File Error')
+
+# json_data['predictions'] = []
+
+# # Save the updated data to the file
+# with open(json_data_path, 'w') as file:
+#     json.dump(json_data, file, indent=2)
+
 # Offensive Word List 151
-offensive_words_list = [
-    'abnormal', 'abusado', 'adik', 'animal', 'arabo',
-    'arogante', 'aso', 'aswang', 'baboy', 'backstabber',
-    'bading', 'badjao', 'baduy', 'bakla', 'balasubas',
-    'balimbing', 'baliw', 'baluga', 'balyena', 'bangag',
-    'bansot', 'basura', 'batchoy', 'bingi', 'bingot',
-    'bisaya', 'bobo', 'bruha', 'bulag', 'bulok',
-    'bumbay', 'bungol', 'butiki', 'buwaya', 'corrupt',
-    'dambuhala', 'demon', 'demonyo', 'dugyot', 'duling',
-    'dwende', 'echosera', 'elitista', 'engkanto', 'engot',
-    'epal', 'eut', 'fuck', 'fucking', 'gago', 'gahaman',
-    'ganid', 'garapal', 'gasul', 'hambog', 'hayop',
-    'higad', 'hipokrita', 'hipokrito', 'hipon', 'hudas',
-    'hypocrite', 'idiot', 'ingrata', 'ipokrita', 'ipokrito',
-    'itim', 'kabayo', 'kalabaw', 'kalbo', 'kantot',
-    'kantutin', 'kingina', 'kulto', 'kupal', 'kurakot',
-    'lamang-lupa', 'laos', 'laspag', 'libagin', 'lutang',
-    'maasim', 'mabaho', 'madaya', 'magnanakaw', 'maitim',
-    'malandi', 'maligno', 'malisyosa', 'manananggal', 'mandurugas',
-    'mangkukulam', 'mangmang', 'manyak', 'manyakis', 'mapayat',
-    'mataba', 'matanda', 'mayabang', 'muchacha', 'ngongo',
-    'palaka', 'palamunin', 'palpak', 'pandak', 'panget',
-    'pango', 'panot', 'payat', 'peenoise', 'peste',
-    'plastik', 'pokpok', 'poop', 'pulubi', 'punyemas',
-    'punyeta', 'putangina', 'saltik', 'sayad', 'shit',
-    'siraulo', 'skwater', 'squatter', 'stupid', 'supot',
-    'suwapang', 'taba', 'tae', 'tanda', 'tanga',
-    'tangina', 'terrorista', 'tibo', 'tikbalang', 'tite',
-    'titi', 'tomboy', 'topak', 'trapo', 'trash',
-    'traydor', 'tubol', 'tukmol', 'tuta', 'ugly',
-    'ulol', 'ulopong', 'unggoy', 'mamatay', 'maghirap'
-]
+offensive_words_list = json_data['offensive_words_list']
 
 # Hate Speech Word List 72
-hate_words_list = [
-    'abnoy', 'asshole', 'bayot', 'beho', 'bekimon',
-    'biot', 'bisakol', 'bitch', 'bobita', 'buang',
-    'burikat', 'chekwa', 'chingchong', 'chink', 'cunt',
-    'dumbass', 'fag', 'faggot', 'fatass', 'fatty',
-    'gaga', 'gunggong', 'gurang', 'hampaslupa', 'hindot',
-    'impakta', 'indogs', 'intsik', 'intsikbeho', 'inutil',
-    'judas', 'kapre', 'ladyboy', 'lesbo', 'linta',
-    'mongoloid', 'multo', 'negra', 'negro', 'nganget',
-    'nigga', 'nigger', 'nognog', 'pignoys', 'prick',
-    'prostitute', 'pulpol', 'pussy', 'puta', 'retard',
-    'retokada', 'sakang', 'sakim', 'salot', 'shunga',
-    'sintosinto', 'slapsoil', 'slut', 'squammy', 'tababoy',
-    'tabachingching', 'tabachoy', 'tarantado', 'tingting',
-    'tiyanak', 'tranny', 'trans', 'ulaga', 'unano', 'whore', 'motherfucker',
-    'tanginamo', 'putanginamo'
-]
+hate_words_list = json_data['hate_words_list']
 
 # Negation Word List 5
 negation_words_list = [
@@ -116,6 +100,27 @@ tfidf_model = joblib.load('tfidf_vectorizer.pkl')
 
 # Load the Logistic Regression Model
 log_reg_model = joblib.load('logistic_regression_model.pkl')
+
+# SAVE JSON DATA
+def save_new_prediction(text,prediction):
+    # Load existing data from the file
+    try:
+        with open(json_data_path, 'r') as file:
+            json_data = json.load(file)
+    except FileNotFoundError:
+        # If the file doesn't exist, create a new one with default structure
+        json_data = {
+            'hate_words_list': [],
+            'offensive_words_list': [],
+            'predictions': []
+        }
+
+    # Add the new prediction to the 'predictions' list
+    json_data['predictions'].append([text, prediction])
+
+    # Save the updated data to the file
+    with open(json_data_path, 'w') as file:
+        json.dump(json_data, file, indent=2)
 
 def preprocessText(text):
     # REMOVE: Links
@@ -626,17 +631,8 @@ def hybrid():
         print("\n")
 
     result = majority_voting(result_model1, result_model2)
-    # print(result)
 
-    # selected [both,rule,logreg]
-    # prediction
-
-    # rule
-    # ruleData / pairs / words
-
-    # prob0
-    # prob1
-    # contributingwords | hate
+    save_new_prediction( data.get('text'), result['prediction'] )
 
     return jsonify(result)
 
