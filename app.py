@@ -25,24 +25,19 @@ json_data = {}
 #     ]
 # }
 
+# json_data['predictions'] = []
+
+# # Save the updated data to the file
+# with open(json_data_path, 'w') as file:
+#     json.dump(json_data, file, indent=2)
+
 #  INITIAL LOAD DATA FILE  ->
-
-#  LOAD DATA FILE -> UPDATE DATA -> UPDATE AND SAVE DATA FILE
-
-
-# Load the updated values
 try:
     with open(json_data_path, 'r') as file:
         json_data = json.load(file)
         print(len(json_data['predictions']))
 except FileNotFoundError:
     print('Load File Error')
-
-# json_data['predictions'] = []
-
-# # Save the updated data to the file
-# with open(json_data_path, 'w') as file:
-#     json.dump(json_data, file, indent=2)
 
 # Offensive Word List 151
 offensive_words_list = json_data['offensive_words_list']

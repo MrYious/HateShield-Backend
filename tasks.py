@@ -70,6 +70,62 @@ def remove_english_stopwords(tokens):
 def remove_tagalog_stopwords(tokens):
     return [token for token in tokens if token.lower() not in tagalog_stopwords]
 
+def generate_feature_names_coef(log_reg_model, tfidf_model):
+    hate_threshold = 3.0
+
+    # Assuming log_reg_model is already loaded
+    # Get the coefficients and feature names
+    coefficients = log_reg_model.coef_[0]
+    feature_names = tfidf_model.get_feature_names_out()
+
+    # Create a DataFrame with feature names and their corresponding coefficients
+    coefficients_df = pd.DataFrame({'Feature': feature_names, 'Coefficient': coefficients})
+
+    # Filter rows where the coefficient is greater than the threshold
+    top_hate_words = coefficients_df[coefficients_df['Coefficient'] > hate_threshold]
+
+    # Sort the DataFrame by absolute coefficient values to identify the top hate words
+    top_hate_words = top_hate_words.sort_values(by='Coefficient', ascending=False)
+
+    return top_hate_words
+
+def cross_matching_for_new_words(new_top_hate, json_data):
+    hate_threshold = 4.0
+    offensive_lower = 3.0
+    offensive_upper = 4.0
+
+    old_hate_keywords = set(json_data['hate_words_list'])
+    old_offensive_keywords = set(json_data['offensive_words_list'])
+
+    new_hate = new_top_hate[new_top_hate['Coefficient'] > hate_threshold]
+    new_offensive = new_top_hate[(new_top_hate['Coefficient'] >= offensive_lower) & (new_top_hate['Coefficient'] <= offensive_upper)]
+
+    new_hate_words = set(new_hate['Feature'])
+    new_offensive_words = set(new_offensive['Feature'])
+
+    new_hate_words = new_hate_words - old_hate_keywords
+    new_offensive_words = new_offensive_words - old_offensive_keywords - old_hate_keywords
+
+    print()
+    print(new_hate_words)
+    print(new_offensive_words)
+
+    return new_hate_words, new_offensive_words
+
+def updateRules(new_hate_words, new_offensive_words, json_data):
+    hate_words_set = set(json_data['hate_words_list'])
+    offensive_words_set = set(json_data['offensive_words_list'])
+
+    # Update sets with new words
+    hate_words_set.update(new_hate_words)
+    offensive_words_set.update(new_offensive_words)
+
+    # Convert sets back to lists
+    json_data['hate_words_list'] = list(hate_words_set)
+    json_data['offensive_words_list'] = list(offensive_words_set)
+
+    return json_data
+
 def preprocess(new_training_df):
     # DATA CLEANING
 
@@ -129,11 +185,12 @@ def preprocess(new_training_df):
 
     return new_training_df
 
+# MAIN SCHEDULED TASK FOR AUTO TRAIN
 @app.task
 def training_task():
-    # Enter code here
     print('\nTRAINING TASK:\n')
 
+    # ACCESS NEW STORED DATA FROM JSON DATA AND MERGE WITH ORIG TRAIN DATASET
     with open(json_data_path, 'r') as file:
         json_data = json.load(file)
         print(len(json_data['predictions']))
@@ -143,15 +200,15 @@ def training_task():
 
     json_data, new_training_data = get_new_training_data(json_data)
 
-    print('\nNEW_JSON_DATA')
-    print(json_data['predictions'])
-    print('\nNEW_TRAINING_DATA')
-    print(new_training_data)
+    # print('\nUPDATED_JSON_DATA')
+    # print(json_data['predictions'])
+    # print('\nNEW_BALANCED_TRAINING_DATA')
+    # print(new_training_data)
 
-    print()
+    # print()
 
-    print(train_df.info())
-    print(dataset_df.info())
+    # print(train_df.info())
+    # print(dataset_df.info())
 
     add_train = {
         'old': [item[0] for item in new_training_data],
@@ -166,50 +223,75 @@ def training_task():
     new_train_df = pd.concat([train_df, add_train_df], ignore_index=True)
     new_dataset_df = pd.concat([dataset_df, add_dataset_df], ignore_index=True)
 
-    print(new_train_df.info())
-    print(new_dataset_df.info())
-    print()
+    # print(new_train_df.info())
+    # print(new_dataset_df.info())
+    # print()
 
+    # PREPROCESSING UPDATED TRAIN DATA FOR RE-TRAINING
     new_training_df = new_train_df.copy()
-    print(new_training_df.info())
     new_training_df = preprocess(new_training_df)
-    print(new_training_df.info())
+    # print(new_training_df.info())
 
     # TF-IDF Re-Training
     corpus = new_training_df['content']
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(corpus)
+    new_tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = new_tfidf_vectorizer.fit_transform(corpus)
 
     # Generate Input Features using Re-Trained TF-IDF
-    X_train_tfidf = tfidf_vectorizer.transform(new_training_df['content'])
+    X_train_tfidf = new_tfidf_vectorizer.transform(new_training_df['content'])
     y_train = new_training_df['label']
+
     print()
     print(np.unique(y_train))
 
     # Logistic Regression Incremental Training
     # Create a Logistic Regression classifier
-    log_reg_model = LogisticRegression()
+    new_log_reg_model = LogisticRegression()
 
     # Train the model on the training data
-    log_reg_model.fit(X_train_tfidf, y_train)
+    new_log_reg_model.fit(X_train_tfidf, y_train)
+
+    # GENERATE FEATURE NAMES W/ COEFFICIENTS
+    new_top_hate = generate_feature_names_coef(new_log_reg_model, new_tfidf_vectorizer)
+
+    print('\nNEW FEATURES')
+    print(new_top_hate.head(10))
+
+    new_hate_words, new_offensive_words = cross_matching_for_new_words(new_top_hate, json_data)
+
+    print('\nOLD JSON')
+    print(len(json_data['hate_words_list']))
+    print(len(json_data['offensive_words_list']))
+
+    print('\nNEW WORDS')
+    print(len(new_hate_words))
+    print(len(new_offensive_words))
+
+    json_data = updateRules(new_hate_words, new_offensive_words, json_data)
+
+    print('\nNEW JSON')
+    print(len(json_data['hate_words_list']))
+    print(len(json_data['offensive_words_list']))
 
     # AFTER EVERYTHING =>
     # SAVE UPDATED JSON_DATA[PREDICTIONS] (removed)
     # SAVE UPDATED TRAIN, DATASET CSV (added)
     # SAVE UPDATED TF-IDF AND LOG-REG MODEL (retrained)
-    # Save the updated data to the file
 
-    # with open(json_data_path, 'w') as file:
-    #     json.dump(json_data, file, indent=2)
-    # new_train_df.to_csv('new_train_df.csv', index=False)
-    # new_dataset_df.to_csv('new_dataset_df.csv', index=False)
-    # joblib.dump(tfidf_vectorizer, 'tfidf_vectorizer(latest).pkl')
-    # joblib.dump(log_reg_model, 'logistic_regression_model(latest).pkl')
+    with open(json_data_path, 'w') as file:
+        json.dump(json_data, file, indent=2)
+    new_train_df.to_csv('train(latest).csv', index=False)
+    new_dataset_df.to_csv('Dataset(latest).csv', index=False)
+    joblib.dump(new_tfidf_vectorizer, 'tfidf_vectorizer(latest).pkl')
+    joblib.dump(new_log_reg_model, 'logistic_regression_model(latest).pkl')
+    
+    reload_models()
 
 # Schedule the task to run daily at midnight
 app.conf.beat_schedule = {
     'training': {
         'task': 'tasks.training_task',
-        'schedule': crontab(minute=0, hour=0),
+        # 'schedule': crontab(minute=0, hour=0),                          # Daily @ 12:00 AM
+        'schedule': crontab(minute=0, hour=0, day_of_week='monday'),    # Weekly @ Monday 12:00 AM
     },
 }
