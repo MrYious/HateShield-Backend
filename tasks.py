@@ -120,6 +120,8 @@ def updateRules(new_hate_words, new_offensive_words, json_data):
     hate_words_set.update(new_hate_words)
     offensive_words_set.update(new_offensive_words)
 
+    offensive_words_set = offensive_words_set - hate_words_set
+
     # Convert sets back to lists
     json_data['hate_words_list'] = list(hate_words_set)
     json_data['offensive_words_list'] = list(offensive_words_set)
