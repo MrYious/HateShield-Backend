@@ -286,7 +286,7 @@ def training_task():
     new_dataset_df.to_csv('Dataset(latest).csv', index=False)
     joblib.dump(new_tfidf_vectorizer, 'tfidf_vectorizer(latest).pkl')
     joblib.dump(new_log_reg_model, 'logistic_regression_model(latest).pkl')
-    
+
     reload_models()
 
 # Schedule the task to run daily at midnight
