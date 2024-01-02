@@ -5,7 +5,6 @@ import concurrent.futures
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from collections import OrderedDict
-# from tasks import training_task
 
 app = Flask(__name__)
 
@@ -15,23 +14,10 @@ CORS(app)
 # 0 : 20676
 # 1 : 22697
 
+#  INITIAL LOAD OF DATA FILE
 json_data_path = 'data.json'
 json_data = {}
-# json_data = {
-#     'hate_words_list': [],
-#     'offensive_words_list': [],
-#     'predictions': [
-#         ['text', 1],
-#     ]
-# }
 
-# json_data['predictions'] = []
-
-# # Save the updated data to the file
-# with open(json_data_path, 'w') as file:
-#     json.dump(json_data, file, indent=2)
-
-#  INITIAL LOAD DATA FILE  ->
 try:
     with open(json_data_path, 'r') as file:
         json_data = json.load(file)
@@ -91,9 +77,11 @@ for item in offensive_words_list + hate_words_list:
         hate_x_offensive.append(item)
 
 # Load the TF-IDF model
+tfidf_model_old = joblib.load('tfidf_vectorizer.pkl')
 tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
 
 # Load the Logistic Regression Model
+log_reg_model_old = joblib.load('logistic_regression_model.pkl')
 log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
 
 def reload_models():
@@ -116,7 +104,6 @@ def reload_models():
     offensive_words_list = json_data['offensive_words_list']
     hate_words_list = json_data['hate_words_list']
 
-# SAVE JSON DATA
 def save_new_prediction(text,prediction):
     # Load existing data from the file
     try:
@@ -376,22 +363,22 @@ def ruleBased4(text, hate_words):
 # MODELS
 def ex_logistic_regression_classifier(text):
     # FEATURE EXTRACTION: Create input features via trained TF-IDF
-    input_features = tfidf_model.transform([text])
+    input_features = tfidf_model_old.transform([text])
 
     # CLASSIFICATION: Logistic Regression Model
-    prediction = log_reg_model.predict(input_features)
+    prediction = log_reg_model_old.predict(input_features)
 
     # Identify probability scores of the prediction for 0 and 1
-    class_probabilities = log_reg_model.predict_proba(input_features)
+    class_probabilities = log_reg_model_old.predict_proba(input_features)
 
     probability_0 = class_probabilities[0][0]
     probability_1 = class_probabilities[0][1]
 
     # Get the feature names from the TF-IDF model
-    feature_names = tfidf_model.get_feature_names_out()
+    feature_names = tfidf_model_old.get_feature_names_out()
 
     # Get the coefficients from the logistic regression model
-    coefficients = log_reg_model.coef_[0]
+    coefficients = log_reg_model_old.coef_[0]
 
     # Map feature names to their corresponding coefficients
     feature_coefficients = dict(zip(feature_names, coefficients))
@@ -650,8 +637,6 @@ def hybrid():
     save_new_prediction( data.get('text'), result['prediction'] )
 
     return jsonify(result)
-
-# training_task()
 
 if __name__ == '__main__':
     app.run(debug=True)
