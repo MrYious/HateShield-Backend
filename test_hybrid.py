@@ -2,17 +2,9 @@ import re
 import joblib
 import json
 import concurrent.futures
-from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask import jsonify
 from collections import OrderedDict
-
-app = Flask(__name__)
-
-CORS(app)
-
-# dataset
-# 0 : 20676
-# 1 : 22697
+import pandas as pd
 
 #  INITIAL LOAD OF DATA FILE
 json_data_path = 'data.json'
@@ -21,7 +13,6 @@ json_data = {}
 try:
     with open(json_data_path, 'r') as file:
         json_data = json.load(file)
-        print(len(json_data['predictions']))
 except FileNotFoundError:
     print('Load File Error')
 
@@ -83,46 +74,6 @@ tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
 # Load the Logistic Regression Model
 log_reg_model_old = joblib.load('logistic_regression_model.pkl')
 log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
-
-def reload_models():
-    global tfidf_model
-    global log_reg_model
-    global offensive_words_list
-    global hate_words_list
-
-    # Load TF-IDF Vectorizer
-    tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
-
-    # Load Logistic Regression model
-    log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
-
-    # Load Updated JSON DATA
-    with open(json_data_path, 'r') as file:
-        json_data = json.load(file)
-        print(len(json_data['predictions']))
-
-    offensive_words_list = json_data['offensive_words_list']
-    hate_words_list = json_data['hate_words_list']
-
-def save_new_prediction(text,prediction):
-    # Load existing data from the file
-    try:
-        with open(json_data_path, 'r') as file:
-            json_data = json.load(file)
-    except FileNotFoundError:
-        # If the file doesn't exist, create a new one with default structure
-        json_data = {
-            'hate_words_list': [],
-            'offensive_words_list': [],
-            'predictions': []
-        }
-
-    # Add the new prediction to the 'predictions' list
-    json_data['predictions'].append([text, prediction])
-
-    # Save the updated data to the file
-    with open(json_data_path, 'w') as file:
-        json.dump(json_data, file, indent=2)
 
 def preprocessText(text):
     # REMOVE: Links
@@ -360,46 +311,12 @@ def ruleBased4(text, hate_words):
         'result': bool(matching_indices)
     }, new_text
 
-# MODELS
-def ex_logistic_regression_classifier(text):
-    # FEATURE EXTRACTION: Create input features via trained TF-IDF
-    input_features = tfidf_model_old.transform([text])
-
-    # CLASSIFICATION: Logistic Regression Model
-    prediction = log_reg_model_old.predict(input_features)
-
-    # Identify probability scores of the prediction for 0 and 1
-    class_probabilities = log_reg_model_old.predict_proba(input_features)
-
-    probability_0 = class_probabilities[0][0]
-    probability_1 = class_probabilities[0][1]
-
-    # Get the feature names from the TF-IDF model
-    feature_names = tfidf_model_old.get_feature_names_out()
-
-    # Get the coefficients from the logistic regression model
-    coefficients = log_reg_model_old.coef_[0]
-
-    # Map feature names to their corresponding coefficients
-    feature_coefficients = dict(zip(feature_names, coefficients))
-
-    # Identify words in the input text and their absolute coefficients
-    contributing_words = {word: abs(feature_coefficients.get(word, 0)) for word in text.split()}
-
-    result = {
-        'prediction': int(prediction[0]),
-        'probability_0': probability_0,
-        'probability_1': probability_1,
-        'contributing_words': contributing_words
-    }
-    return result
-
 def hybrid_logistic_regression_classifier(text):
     # PREPROCESSING
     textArray = text.split()
-
     filteredText = [word for word in textArray if word.lower() not in stop_words]
     text = ' '.join(filteredText)
+    print('[TOKENS] > ', filteredText)
 
     # FEATURE EXTRACTION: Create input features via trained TF-IDF
     input_features = tfidf_model.transform([text])
@@ -495,7 +412,6 @@ def hybrid_rule_based_classifier(text):
 
     return result
 
-# VOTING SYSTEM
 def majority_voting(rule_result, logistic_result):
     result = {}
 
@@ -505,9 +421,11 @@ def majority_voting(rule_result, logistic_result):
         result = rule_result
         result['selected'] = 'both'
 
-        print('HYBRID RESULT = SAME')
+        print(f"[PREDICTION] >>> SAME")
+        print(f"[RESULT]     >>> {'1 - Hate Speech' if result['prediction'] == 1 else '0 - Non-Hate Speech'}")
+        print(f"[INFORMATION]")
         print(result)
-        print("\n")
+        print()
 
     # DIFFERENT PREDICTION
     else :
@@ -515,6 +433,7 @@ def majority_voting(rule_result, logistic_result):
         #  1 0
         #  0 1
 
+        # DECISION TREE
         if (rule_result['prediction'] == 1 and logistic_result['prediction'] == 0):
             if (1 in rule_result['rules'] and 2 in rule_result['rules']):
                 result['selected'] = 'rule'
@@ -544,10 +463,8 @@ def majority_voting(rule_result, logistic_result):
             if (3 in rule_result['rules'] and 4 in rule_result['rules']):
                 result['selected'] = 'rule'
             elif not all(word in hate_x_offensive for word in logistic_result['contributing_hate_words']):
-                print('here1')
                 result['selected'] = 'logreg'
             elif rule_result['rule'] == 5 and logistic_result['probability_1'] > 0.65:
-                print('here2')
                 result['selected'] = 'logreg'
             else:
                 result['selected'] = 'rule'
@@ -562,7 +479,6 @@ def majority_voting(rule_result, logistic_result):
                 # else
                     # Select Rule 0
 
-
         if result['selected'] == 'rule':
             result.update(logistic_result)
             result.update(rule_result)
@@ -572,45 +488,20 @@ def majority_voting(rule_result, logistic_result):
             result.update(logistic_result)
             result['prediction'] = logistic_result['prediction']
 
-        print('HYBRID RESULT = DIFFERENT')
+        print(f"[PREDICTION] >>> DIFF: [LOG-{logistic_result['prediction']}] [RUL-{rule_result['prediction']}]")
+        print(f"[RESULT]     >>> {'[LOG]' if result['selected'] == 'logreg' else '[RUL]'} {'1 - Hate Speech' if result['prediction'] == 1 else '0 - Non-Hate Speech'}")
+        print(f"[INFORMATION]")
         print(result)
-        print("\n")
+        print()
 
     return result
 
-# LOGISTIC REGRESSION CLASSIFIER
-@app.route('/api/logistic', methods=['GET', 'POST'])
-def logistic():
-    data = request.json
-    text = data.get('text')
-
+def hybrid_model(text):
     # PREPROCESSING
-    text = preprocessText(text)
-    text = preprocessText1(text)
-
-    words = text.split()
-    filtered_words = [word for word in words if word.lower() not in stop_words]
-    text = ' '.join(filtered_words)
-
-    #CLASSIFICATION
-    result = ex_logistic_regression_classifier(text)
-
-    return jsonify(result)
-
-# HYBRID CLASSIFICATION
-@app.route('/api/hybrid', methods=['GET', 'POST'])
-def hybrid():
-    data = request.json
-    text = data.get('text')
-
-    print("\n")
-    print("TEXT")
-    print(text)
-    print("\n")
-
-    # PREPROCESSING
+    print('[RAW TEXT] > ', text)
     text = preprocessText(text)
     text1 = preprocessText1(text)
+    print('[CLEANED TEXT] > ', text)
 
     # PARALLEL PROCESSING
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -625,18 +516,92 @@ def hybrid():
         result_model1 = rule_model.result()
         result_model2 = logistic_model.result()
 
-        print('Rule-Based Model')
-        print(result_model1)
-        print("\n")
-        print('Logistic Regression Model')
-        print(result_model2)
-        print("\n")
-
     result = majority_voting(result_model1, result_model2)
 
-    save_new_prediction( data.get('text'), result['prediction'] )
+    return result
 
-    return jsonify(result)
+def calculate_evaluation(actual, predicted):
+    if actual == 1 and predicted == 1:
+        return 'TP'
+    elif actual == 0 and predicted == 1:
+        return 'FP'
+    elif actual == 0 and predicted == 0:
+        return 'TN'
+    elif actual == 1 and predicted == 0:
+        return 'FN'
+    else:
+        return 'Unknown'
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+# MAIN FUNCTION
+while True:
+    print('\n=========================================')
+    print('HATE SPEECH DETECTION TOOL - HYBRID MODEL')
+    print('=========================================\n')
+    select_mode = input('[1] Single or [2] Multiple  >')
+
+    if select_mode == '1':
+        text_input = input('\n[MODE - SINGLE]  Enter a text >')
+
+        print()
+        result = hybrid_model(text_input)
+
+        print('\n[TEXT] > ', text_input)
+        print('[PREDICTION] >', '1 - Hate Speech' if result['prediction'] == 1 else '0 - Non-Hate Speech')
+
+        print('\n[HATE %] > ', result['probability_1'])
+        print('[NON-HATE %] > ', result['probability_0'])
+        print()
+
+    elif select_mode == '2':
+        # Load CSV into a DataFrame
+        dataset = pd.read_csv('dataset/test1.csv')
+
+        # Rename
+        column_mapping = {'old': 'text', 'label': 'actual'}
+        dataset.rename(columns=column_mapping, inplace=True)
+        print()
+        dataset.info()
+        print()
+
+        input()
+
+        # Prediction
+        dataset['predicted'] = dataset['text'].apply(lambda x: hybrid_model(x)['prediction'])
+
+        # Evaluation
+        dataset['evaluation'] = dataset.apply(lambda row: calculate_evaluation(row['actual'], row['predicted']), axis=1)
+
+        print()
+        dataset.info()
+        print()
+        print(dataset)
+
+        # COUNT
+        print('\n[# ACTUAL]')
+        counts = dataset['actual'].value_counts()
+        print(counts)
+        print('\n[# PREDICTED]')
+        counts = dataset['predicted'].value_counts()
+        print(counts)
+        print('\n[# EVALUATION]')
+        counts = dataset['evaluation'].value_counts()
+        print(counts)
+
+        # ACCURACY
+        TP = counts.get('TP', 0)
+        TN = counts.get('TN', 0)
+        FP = counts.get('FP', 0)
+        FN = counts.get('FN', 0)
+        accuracy = (TP + TN) / counts.sum()
+        print(f'\n[ACCURACY] => {accuracy:.2%}')
+
+        # EXPORT
+        print('\n[EXPORT TO CSV]')
+        is_export = input('[1] Save or [Any key to Close]  >')
+        if is_export == '1':
+            dataset.to_csv('dataset/test(hyb_result).csv', index=False)
+
+    else:
+        print('Invalid choice. Please enter 1 or 2.')
+
