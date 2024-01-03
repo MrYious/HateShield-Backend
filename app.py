@@ -450,6 +450,8 @@ def hybrid_rule_based_classifier(text):
     textArray = preprocessText1(newText).split()
     textArray.append('[END]')
     textArray.append('[END]')
+    textArray.append('[END]')
+    textArray.append('[END]')
 
     isRule3, textArray = ruleBased3(textArray, hate_x_offensive, negation_words_list)
     isRule2, textArray = ruleBased2(textArray, hate_x_offensive, target_words)
