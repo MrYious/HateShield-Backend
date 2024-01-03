@@ -135,9 +135,9 @@ def calculate_evaluation(actual, predicted):
 
 # MAIN FUNCTION
 while True:
-    print('\n==========================')
-    print('HATE SPEECH DETECTION TOOL')
-    print('==========================\n')
+    print('\n===========================================')
+    print('HATE SPEECH DETECTION TOOL - LOGISTIC MODEL')
+    print('===========================================\n')
     select_mode = input('[1] Single or [2] Multiple  >')
 
     if select_mode == '1':
