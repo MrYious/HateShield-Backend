@@ -105,12 +105,15 @@ def logistic_classifier(text):
 
 def logistic_model(text):
     # PREPROCESSING
+    print('[RAW TEXT] > ', text)
     text = preprocessText(text)
     text = preprocessText1(text)
+    print('[CLEANED TEXT] > ', text)
 
     words = text.split()
     filtered_words = [word for word in words if word.lower() not in stop_words]
     text = ' '.join(filtered_words)
+    print('[TOKENS] > ', filtered_words)
 
     #CLASSIFICATION
     result = logistic_classifier(text)
