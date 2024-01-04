@@ -155,7 +155,8 @@ while True:
 
     elif select_mode == '2':
         # Load CSV into a DataFrame
-        dataset = pd.read_csv('dataset/test1.csv')
+        dataset = pd.read_csv('dataset/test2.csv')
+        # dataset = pd.read_csv('dataset/test(result).csv')
 
         # Rename
         column_mapping = {'old': 'text', 'label': 'actual'}
@@ -167,10 +168,10 @@ while True:
         input()
 
         # Prediction
-        dataset['predicted'] = dataset['text'].apply(lambda x: logistic_model(x)['prediction'])
+        dataset['predicted_log'] = dataset['text'].apply(lambda x: logistic_model(x)['prediction'])
 
         # Evaluation
-        dataset['evaluation'] = dataset.apply(lambda row: calculate_evaluation(row['actual'], row['predicted']), axis=1)
+        dataset['evaluation_log'] = dataset.apply(lambda row: calculate_evaluation(row['actual'], row['predicted_log']), axis=1)
 
         print()
         dataset.info()
@@ -182,10 +183,10 @@ while True:
         counts = dataset['actual'].value_counts()
         print(counts)
         print('\n[# PREDICTED]')
-        counts = dataset['predicted'].value_counts()
+        counts = dataset['predicted_log'].value_counts()
         print(counts)
         print('\n[# EVALUATION]')
-        counts = dataset['evaluation'].value_counts()
+        counts = dataset['evaluation_log'].value_counts()
         print(counts)
 
         # ACCURACY
@@ -200,7 +201,7 @@ while True:
         print('\n[EXPORT TO CSV]')
         is_export = input('[1] Save or [Any key to Close]  >')
         if is_export == '1':
-            dataset.to_csv('dataset/test(log_result).csv', index=False)
+            dataset.to_csv('dataset/test(result).csv', index=False)
 
     else:
         print('Invalid choice. Please enter 1 or 2.')

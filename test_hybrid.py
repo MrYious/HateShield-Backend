@@ -69,11 +69,11 @@ for item in offensive_words_list + hate_words_list:
 
 # Load the TF-IDF model
 tfidf_model_old = joblib.load('tfidf_vectorizer.pkl')
-tfidf_model = joblib.load('tfidf_vectorizer(latest).pkl')
+tfidf_model = joblib.load('tfidf_vectorizer.pkl')
 
 # Load the Logistic Regression Model
 log_reg_model_old = joblib.load('logistic_regression_model.pkl')
-log_reg_model = joblib.load('logistic_regression_model(latest).pkl')
+log_reg_model = joblib.load('logistic_regression_model.pkl')
 
 def preprocessText(text):
     # REMOVE: Links
@@ -555,7 +555,7 @@ while True:
 
     elif select_mode == '2':
         # Load CSV into a DataFrame
-        dataset = pd.read_csv('dataset/test1.csv')
+        dataset = pd.read_csv('dataset/test(result).csv')
 
         # Rename
         column_mapping = {'old': 'text', 'label': 'actual'}
@@ -567,10 +567,10 @@ while True:
         input()
 
         # Prediction
-        dataset['predicted'] = dataset['text'].apply(lambda x: hybrid_model(x)['prediction'])
+        dataset['predicted_hyb'] = dataset['text'].apply(lambda x: hybrid_model(x)['prediction'])
 
         # Evaluation
-        dataset['evaluation'] = dataset.apply(lambda row: calculate_evaluation(row['actual'], row['predicted']), axis=1)
+        dataset['evaluation_hyb'] = dataset.apply(lambda row: calculate_evaluation(row['actual'], row['predicted_hyb']), axis=1)
 
         print()
         dataset.info()
@@ -582,10 +582,10 @@ while True:
         counts = dataset['actual'].value_counts()
         print(counts)
         print('\n[# PREDICTED]')
-        counts = dataset['predicted'].value_counts()
+        counts = dataset['predicted_hyb'].value_counts()
         print(counts)
         print('\n[# EVALUATION]')
-        counts = dataset['evaluation'].value_counts()
+        counts = dataset['evaluation_hyb'].value_counts()
         print(counts)
 
         # ACCURACY
@@ -600,7 +600,7 @@ while True:
         print('\n[EXPORT TO CSV]')
         is_export = input('[1] Save or [Any key to Close]  >')
         if is_export == '1':
-            dataset.to_csv('dataset/test(hyb_result).csv', index=False)
+            dataset.to_csv('dataset/test(result).csv', index=False)
 
     else:
         print('Invalid choice. Please enter 1 or 2.')
