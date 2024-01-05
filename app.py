@@ -118,7 +118,7 @@ def save_new_prediction(text,prediction):
         }
 
     # Add the new prediction to the 'predictions' list
-    json_data['predictions'].append([text, prediction])
+    json_data['predictions'].append([text, "Hate Speech" if prediction == 1 else "Non-Hate Speech"])
 
     # Save the updated data to the file
     with open(json_data_path, 'w') as file:

@@ -555,16 +555,19 @@ while True:
 
     elif select_mode == '2':
         # Load CSV into a DataFrame
-        dataset = pd.read_csv('dataset/test(result).csv')
+        dataset = pd.read_csv('dataset/test/test(result).csv')
 
         # Rename
-        column_mapping = {'old': 'text', 'label': 'actual'}
+        column_mapping = {'post': 'text', 'label': 'actual'}
         dataset.rename(columns=column_mapping, inplace=True)
         print()
         dataset.info()
         print()
 
         input()
+
+        # ENCODING
+        # dataset['actual'] = dataset['actual'].map({'Hate Speech': 1, 'Non-Hate Speech': 0})
 
         # Prediction
         dataset['predicted_hyb'] = dataset['text'].apply(lambda x: hybrid_model(x)['prediction'])
@@ -600,7 +603,7 @@ while True:
         print('\n[EXPORT TO CSV]')
         is_export = input('[1] Save or [Any key to Close]  >')
         if is_export == '1':
-            dataset.to_csv('dataset/test(result).csv', index=False)
+            dataset.to_csv('dataset/test/test(result).csv', index=False)
 
     else:
         print('Invalid choice. Please enter 1 or 2.')

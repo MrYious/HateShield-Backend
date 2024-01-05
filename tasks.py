@@ -25,12 +25,12 @@ tagalog_stopwords = [
 
 def get_new_training_data(json_data):
     # Get the counts of 1s and 0s in json_data['predictions']
-    count_1s = sum(1 for _, prediction in json_data['predictions'] if prediction == 1)
-    count_0s = sum(1 for _, prediction in json_data['predictions'] if prediction == 0)
+    count_1s = sum(1 for _, prediction in json_data['predictions'] if prediction == "Hate Speech")
+    count_0s = sum(1 for _, prediction in json_data['predictions'] if prediction == "Non-Hate Speech")
 
     # print(json_data['predictions'])
-    # print(count_1s)
-    # print(count_0s)
+    print(count_1s)
+    print(count_0s)
 
     predictions = json_data['predictions']
 
@@ -44,10 +44,10 @@ def get_new_training_data(json_data):
     x1 = 0
     for text, prediction in predictions[:]:
         if( not (x0 == num_to_select and x1 == num_to_select)):
-            if prediction == 1 and x1 != num_to_select:
+            if prediction == 'Hate Speech' and x1 != num_to_select:
                 new_training_data.append(predictions.pop(0))
                 x1 += 1
-            elif prediction == 0 and x0 != num_to_select:
+            elif prediction == 'Non-Hate Speech' and x0 != num_to_select:
                 new_training_data.append(predictions.pop(0))
                 x0 += 1
             else:
@@ -134,33 +134,33 @@ def preprocess(new_training_df):
     # REMOVE LINKS
     pattern = r'http\S+|www\S+'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     # REMOVE EMOJIS
     pattern = r'&#\w*?;'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     pattern = r'&\w*?;'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     # REMOVE PUNCTUATIONS AND SYMBOLS
     pattern = r'[^\w\s@#]'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     # REMOVE HASHTAGS
     pattern = r'#(\w+)'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     # REMOVE MENTIONS
     pattern = r'@(\w+)'
     replacement = '@'
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     pattern = r'USERNAME'
     replacement = '@'
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
     # REMOVE WHITESPACES
     pattern = r'\s+'
     replacement = ' '
-    new_training_df['old'] = new_training_df['old'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
 
     # DATA NORMALIZATION
 
@@ -168,22 +168,22 @@ def preprocess(new_training_df):
     new_training_df['label'] = new_training_df['label'].replace({'Non-Hate Speech': 0, 'Hate Speech': 1})
 
     # LOWERCASING
-    new_training_df['old'] = new_training_df['old'].str.lower()
+    new_training_df['post'] = new_training_df['post'].str.lower()
 
     # TOKENIZATION
-    new_training_df['tokens'] = new_training_df['old'].apply(tokenize_text)
+    new_training_df['tokens'] = new_training_df['post'].apply(tokenize_text)
 
     # STOP WORDS REMOVAL
     new_training_df['tokens'] = new_training_df['tokens'].apply(remove_english_stopwords)
     new_training_df['tokens'] = new_training_df['tokens'].apply(remove_tagalog_stopwords)
 
     # TOKEN COMPILATION
-    new_training_df['content'] = new_training_df['tokens'].apply(lambda tokens: ' '.join(tokens))
+    new_training_df['post'] = new_training_df['tokens'].apply(lambda tokens: ' '.join(tokens))
 
     # MENTIONS
     pattern = r'@'
     replacement = '@USER'
-    new_training_df['content'] = new_training_df['content'].str.replace(pattern, replacement, regex=True)
+    new_training_df['post'] = new_training_df['post'].str.replace(pattern, replacement, regex=True)
 
     return new_training_df
 
@@ -202,22 +202,22 @@ def training_task():
 
     json_data, new_training_data = get_new_training_data(json_data)
 
-    # print('\nUPDATED_JSON_DATA')
-    # print(json_data['predictions'])
-    # print('\nNEW_BALANCED_TRAINING_DATA')
-    # print(new_training_data)
+    print('\nUPDATED_JSON_DATA')
+    print(json_data['predictions'])
+    print('\nNEW_BALANCED_TRAINING_DATA')
+    print(new_training_data)
 
-    # print()
+    print()
 
-    # print(train_df.info())
-    # print(dataset_df.info())
+    print(train_df.info())
+    print(dataset_df.info())
 
     add_train = {
-        'old': [item[0] for item in new_training_data],
+        'post': [item[0] for item in new_training_data],
         'label': [item[1] for item in new_training_data]
     }
     add_dataset = {
-        'content': [item[0] for item in new_training_data],
+        'post': [item[0] for item in new_training_data],
         'label': [item[1] for item in new_training_data]
     }
     add_train_df = pd.DataFrame(add_train)
@@ -225,22 +225,22 @@ def training_task():
     new_train_df = pd.concat([train_df, add_train_df], ignore_index=True)
     new_dataset_df = pd.concat([dataset_df, add_dataset_df], ignore_index=True)
 
-    # print(new_train_df.info())
-    # print(new_dataset_df.info())
-    # print()
+    print(new_train_df.info())
+    print(new_dataset_df.info())
+    print()
 
     # PREPROCESSING UPDATED TRAIN DATA FOR RE-TRAINING
     new_training_df = new_train_df.copy()
     new_training_df = preprocess(new_training_df)
-    # print(new_training_df.info())
+    print(new_training_df.info())
 
     # TF-IDF Re-Training
-    corpus = new_training_df['content']
+    corpus = new_training_df['post']
     new_tfidf_vectorizer = TfidfVectorizer()
     tfidf_matrix = new_tfidf_vectorizer.fit_transform(corpus)
 
     # Generate Input Features using Re-Trained TF-IDF
-    X_train_tfidf = new_tfidf_vectorizer.transform(new_training_df['content'])
+    X_train_tfidf = new_tfidf_vectorizer.transform(new_training_df['post'])
     y_train = new_training_df['label']
 
     print()
@@ -297,3 +297,5 @@ app.conf.beat_schedule = {
         'schedule': crontab(minute=0, hour=0, day_of_week='monday'),    # Weekly @ Monday 12:00 AM
     },
 }
+
+# training_task()
